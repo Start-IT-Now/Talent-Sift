@@ -74,22 +74,30 @@ const JobFormStep1 = ({ formData, handleInputChange, onNewSubmit, onExistingSubm
   const [mode, setMode] = useState('new');
   const [errors, setErrors] = useState({});
 
-  const validate = () => {
-    const newErrors = {};
-    if (mode === 'new') {
-      if (!formData.jobTitle) newErrors.jobTitle = 'Job Title is required';
-      if (!formData.jobtype) newErrors.jobtype = 'Job Type is required';
-      if (!formData.requiredSkills) newErrors.requiredSkills = 'Please enter one or more skills';
-if (!formData.jobDescription || !jobDescriptionIsValid) {
-  newErrors.jobDescription = 'Job description must be between 100 and 200 words';
-}
-      if (!formData.industry) newErrors.industry = 'Industry is required';
-      if (!formData.email) newErrors.email = 'email is required';
-      if (!formData.resumeFiles || formData.resumeFiles.length === 0) newErrors.resumeFiles = 'At least one resume must be uploaded';
+const validate = () => {
+  const newErrors = {};
+  if (mode === 'new') {
+    if (!formData.jobTitle) newErrors.jobTitle = 'Job Title is required';
+    if (!formData.jobtype) newErrors.jobtype = 'Job Type is required';
+    if (!formData.requiredSkills) newErrors.requiredSkills = 'Please enter one or more skills';
+    if (!formData.jobDescription || !jobDescriptionIsValid) {
+      newErrors.jobDescription = 'Job description must be between 100 and 200 words';
     }
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
+    if (!formData.industry) newErrors.industry = 'Industry is required';
+    if (!formData.email) newErrors.email = 'Email is required';
+    else {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(formData.email)) {
+        newErrors.email = 'Please enter a valid email address';
+      }
+    }
+    if (!formData.resumeFiles || formData.resumeFiles.length === 0) {
+      newErrors.resumeFiles = 'At least one resume must be uploaded';
+    }
+  }
+  setErrors(newErrors);
+  return Object.keys(newErrors).length === 0;
+};
 
   const onSubmit = async () => {
     if (!validate()) return;

@@ -49,8 +49,8 @@ function App() {
       yearsOfExperience: decodeSafe(params.get('yoe') || ''),
       jobTitle: decodeSafe(params.get('title') || ''),
       industry: decodeSafe(params.get('industry') || ''),
-      owner: decodeSafe(params.get('owner') || ''),
-      client: decodeSafe(params.get('client') || ''),
+      owner: decodeSafe(params.get('owner') || ' Default Owner'),
+      client: decodeSafe(params.get('client') || 'Default Client'),
       jobtype: decodeSafe(params.get('jobtype') || ''), 
       email: decodeSafe(params.get('mail') || ''), // THIS MUST BE a valid option value or empty string
     }));

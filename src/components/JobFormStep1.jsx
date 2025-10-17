@@ -111,6 +111,7 @@ const validate = () => {
       localStorage.setItem('keySkills', JSON.stringify(skillsArray));
     } catch (error) {
       console.error('Submission error:', error);
+        console.log('Validation errors:', errors, formData);
     } finally {
       setIsLoading(false);
     }
@@ -131,6 +132,9 @@ const validate = () => {
     };
     runExisting();
   }, [mode, onExistingSubmit]);
+
+  console.log("Validation check data:", formData, jobDescriptionIsValid, errors);
+
 
   return (
     <div className="flex flex-col min-h-screen">

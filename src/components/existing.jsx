@@ -7,7 +7,6 @@ const Existing = () => {
   const navigate = useNavigate();
   const [uploadedResumes, setUploadedResumes] = useState([]);
   const [searchedResumes, setSearchedResumes] = useState([]);
-  const [orgId, setOrgId] = useState("");
   const [keySkill, setKeySkill] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [scoreRange, setScoreRange] = useState([1, 10]);
@@ -19,177 +18,85 @@ const Existing = () => {
   const [searched, setSearched] = useState(false);
   const [loadingId, setLoadingId] = useState(null);
 
-  // // ✅ Fetch resumes by Org ID + Key Skill
-  // const fetchResumesByKeySkill = useCallback(async () => {
-  //   console.log("fetchResumesByKeySkill called with:", { orgId, keySkill });
-
-  //   if (!orgId.trim() || !keySkill.trim()) {
-  //     setError("Please enter both Org ID and Key Skill.");
-  //     setSearchedResumes([]);
-  //     return;
-  //   }
-
-  //   setSearched(true);
-  //   setLoading(true);
-  //   setError("");
-
-  //   try {
-  //     const url = `https://agentic-ai.co.in/api/agentic-ai/workflow-exe?org_id=${orgId}&workflow_id=resume_ranker`;
-  //     console.log("Fetching from:", url);
-
-  //     const response = await fetch(url);
-  //     console.log("Response status:", response.status);
-
-  //     const data = await response.json();
-  //     console.log("Data from API:", data);
-
-  //     const allExecutions = Array.isArray(data.data) ? data.data : [];
-  //     const matchedExecutions = allExecutions.filter(
-  //       (item) =>
-  //         item.exe_name &&
-  //         item.exe_name.toLowerCase().includes(keySkill.toLowerCase())
-  //     );
-
-  //     if (matchedExecutions.length === 0) {
-  //       setError(`No resumes found for Key Skill: ${keySkill}`);
-  //       setSearchedResumes([]);
-  //       return;
-  //     }
-
-  //     const mappedResumes = matchedExecutions.flatMap((execution, execIdx) => {
-  //       const results = Array.isArray(execution.result)
-  //         ? execution.result
-  //         : [];
-  //       return results.map((item, idx) => ({
-  //         id: `${execution.exe_name}-${idx}`,
-  //         name: item.name || `Candidate ${idx + 1}`,
-  //         Rank: item.score || 0,
-  //         justification: item.justification || "",
-  //         experience:
-  //           typeof item.experience === "number" ? item.experience : 0,
-  //         email: item.email === "xxx" ? "No email" : item.email || "No email",
-  //         phone: item.phone === "xxx" ? "No phone" : item.phone || "No phone",
-  //         keySkills: Array.isArray(item.keySkills)
-  //           ? item.keySkills
-  //           : [execution.exe_name],
-  //         executionName: execution.exe_name,
-  //         orgId: orgId,
-  //       }));
-  //     });
-
-  //     console.log("Total mapped resumes:", mappedResumes.length);
-
-  //     setSearchedResumes(mappedResumes);
-  //     setError(null);
-
-  //     // Cache results
-  //     localStorage.setItem(
-  //       `resumeResults_org_${orgId}_key_${keySkill}`,
-  //       JSON.stringify(mappedResumes)
-  //     );
-  //   } catch (err) {
-  //     console.error("Error in fetchResumesByKeySkill:", err);
-  //     setError("Error retrieving resumes.");
-  //     setSearchedResumes([]);
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  // }, [orgId, keySkill]);
-
-    const fetchResumesByKeySkill = useCallback(async () => {
-  console.log("fetchResumesByKeySkill called with:", { keySkill });
-
-  if (!keySkill.trim()) {
-    setError("Please enter a Key Skill.");
-    setSearchedResumes([]);
-    return;
-  }
-
-  setSearched(true);
-  setLoading(true);
-  setError("");
-
-  try {
-    // ✅ Correct URL (no org_id since it's key skill–only search)
-const url = `https://agentic-ai.co.in/api/agentic-ai/workflow-exe?org_id=2&workflow_id=resume_ranker`;
-
-    console.log("Fetching from:", url);
-
-    const response = await fetch(url);
-    console.log("Response status:", response.status);
-
-    const data = await response.json();
-    console.log("Data from API:", data);
-
-    const allExecutions = Array.isArray(data.data) ? data.data : [];
-
-    // ✅ Filter by keySkill in exe_name
-    const matchedExecutions = allExecutions.filter(
-      (item) =>
-        item.exe_name &&
-        item.exe_name.toLowerCase().includes(keySkill.toLowerCase())
-    );
-
-    if (matchedExecutions.length === 0) {
-      setError(`No resumes found for Key Skill: ${keySkill}`);
+  // ✅ Fetch resumes by Key Skill
+  const fetchResumesByKeySkill = useCallback(async () => {
+    if (!keySkill.trim()) {
+      setError("Please enter a Key Skill.");
       setSearchedResumes([]);
       return;
     }
 
-    // ✅ Map each execution's results into unified resume objects
-    const mappedResumes = matchedExecutions.flatMap((execution, execIdx) => {
-      const results = Array.isArray(execution.result)
-        ? execution.result
-        : [];
-      return results.map((item, idx) => ({
-        id: `${execution.exe_name}-${idx}`,
-        name: item.name || `Candidate ${idx + 1}`,
-        Rank: item.score || 0,
-        justification: item.justification || "",
-        experience:
-          typeof item.experience === "number" ? item.experience : 0,
-        email: item.email === "xxx" ? "No email" : item.email || "No email",
-        phone: item.phone === "xxx" ? "No phone" : item.phone || "No phone",
-        keySkills: Array.isArray(item.keySkills)
-          ? item.keySkills
-          : [execution.exe_name],
-        executionName: execution.exe_name,
-      }));
-    });
+    setSearched(true);
+    setLoading(true);
+    setError("");
 
-    console.log("Total mapped resumes:", mappedResumes.length);
+    try {
+      const url = `https://agentic-ai.co.in/api/agentic-ai/workflow-exe?org_id=2&workflow_id=resume_ranker`;
+      const response = await fetch(url);
+      const data = await response.json();
+      const allExecutions = Array.isArray(data.data) ? data.data : [];
 
-    setSearchedResumes(mappedResumes);
-    setError(null);
+      const matchedExecutions = allExecutions.filter(
+        (item) =>
+          item.exe_name &&
+          item.exe_name.toLowerCase().includes(keySkill.toLowerCase())
+      );
 
-    // ✅ Cache by key skill only
-    localStorage.setItem(
-      `resumeResults_key_${keySkill}`,
-      JSON.stringify(mappedResumes)
-    );
-  } catch (err) {
-    console.error("Error in fetchResumesByKeySkill:", err);
-    setError("Error retrieving resumes.");
-    setSearchedResumes([]);
-  } finally {
-    setLoading(false);
-  }
-}, [keySkill]);
-
-  // Load from localStorage after a search
-  useEffect(() => {
-    if (!searched) return;
-    const key = `resumeResults_org_${orgId}_key_${keySkill}`;
-    const stored = localStorage.getItem(key);
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed)) setSearchedResumes(parsed);
-      } catch (e) {
-        console.error("Failed to parse local resume data", e);
+      if (matchedExecutions.length === 0) {
+        setError(`No resumes found for Key Skill: ${keySkill}`);
+        setSearchedResumes([]);
+        return;
       }
+
+      const mappedResumes = matchedExecutions.flatMap((execution) => {
+        const results = Array.isArray(execution.result) ? execution.result : [];
+        return results.map((item, idx) => ({
+          id: `${execution.exe_name}-${idx}`,
+          name: item.name || `Candidate ${idx + 1}`,
+          Rank: item.score || 0,
+          justification: item.justification || "",
+          experience: typeof item.experience === "number" ? item.experience : 0,
+          email: item.email === "xxx" ? "No email" : item.email || "No email",
+          phone: item.phone === "xxx" ? "No phone" : item.phone || "No phone",
+          keySkills: Array.isArray(item.keySkills)
+            ? item.keySkills
+            : [execution.exe_name],
+          executionName: execution.exe_name,
+        }));
+      });
+
+      setSearchedResumes(mappedResumes);
+      setError(null);
+
+      // Cache by key skill
+      localStorage.setItem(
+        `resumeResults_key_${keySkill}`,
+        JSON.stringify(mappedResumes)
+      );
+    } catch (err) {
+      console.error(err);
+      setError("Error retrieving resumes.");
+      setSearchedResumes([]);
+    } finally {
+      setLoading(false);
     }
-  }, [orgId, keySkill, searched]);
+  }, [keySkill]);
+
+  // Load cached resumes after search
+useEffect(() => {
+  if (!searched) return;
+  const key = `resumeResults_key_${keySkill}`;
+  const stored = localStorage.getItem(key);
+  if (stored && searchedResumes.length === 0) { // only load if empty
+    try {
+      const parsed = JSON.parse(stored);
+      if (Array.isArray(parsed)) setSearchedResumes(parsed);
+    } catch (e) {
+      console.error("Failed to parse local resume data", e);
+    }
+  }
+}, [keySkill, searched, searchedResumes.length]);
+
 
   const combinedResumes = useMemo(
     () => [...uploadedResumes, ...searchedResumes],
@@ -208,23 +115,17 @@ const url = `https://agentic-ai.co.in/api/agentic-ai/workflow-exe?org_id=2&workf
       const inExpRange =
         r.experience >= experienceRange[0] &&
         r.experience <= experienceRange[1];
-      const hasEmail = filterEmail
-        ? r.email && r.email !== "No email"
-        : true;
-      const hasPhone = filterPhone
-        ? r.phone && r.phone !== "No phone"
-        : true;
-      return (
-        matchesSearch && inScoreRange && inExpRange && hasEmail && hasPhone
-      );
+      const hasEmail = filterEmail ? r.email && r.email !== "No email" : true;
+      const hasPhone = filterPhone ? r.phone && r.phone !== "No phone" : true;
+      return matchesSearch && inScoreRange && inExpRange && hasEmail && hasPhone;
     });
   }, [
+    combinedResumes,
     searchQuery,
     scoreRange,
     experienceRange,
     filterEmail,
     filterPhone,
-    combinedResumes,
   ]);
 
   const allKeySkills = useMemo(() => {
@@ -258,22 +159,22 @@ const url = `https://agentic-ai.co.in/api/agentic-ai/workflow-exe?org_id=2&workf
         alert(`❌ Failed: ${data?.error || "Unknown error"}`);
       }
     } catch (error) {
-      console.error("Fetch error:", error);
+      console.error(error);
       alert("⚠️ Error sending email. Please try again.");
     } finally {
       setLoadingId(null);
     }
   };
 
-
-  function renderScoreThumb({ index, props }) {
-      return (
-        <div
-          {...props}
-          key={index}
-          className="h-5 w-5 rounded-full bg-orange-400 shadow-md cursor-pointer" />
-      );
-    }
+  function renderThumb({ index, props }) {
+    return (
+      <div
+        {...props}
+        key={index}
+        className="h-5 w-5 rounded-full bg-orange-400 shadow-md cursor-pointer"
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen w-full bg-white p-4">
@@ -282,7 +183,6 @@ const url = `https://agentic-ai.co.in/api/agentic-ai/workflow-exe?org_id=2&workf
         <div className="w-full md:w-64 bg-gray-700 rounded-xl p-4 shadow-md flex-shrink-0 text-[#EAEAEA]">
           <h3 className="font-bold mb-5 text-xl">🔍 Search Resumes</h3>
 
-          {/* ✅ Org ID + Key Skill Search */}
           <form
             className="mb-4"
             onSubmit={(e) => {
@@ -290,15 +190,6 @@ const url = `https://agentic-ai.co.in/api/agentic-ai/workflow-exe?org_id=2&workf
               fetchResumesByKeySkill();
             }}
           >
-            {/* <label className="font-semibold block mb-2">Org ID</label>
-            <input
-              type="text"
-              placeholder="Enter Org ID"
-              value={orgId}
-              onChange={(e) => setOrgId(e.target.value)}
-              className="w-full px-4 py-2 mb-3 border border-gray-600 bg-white text-gray-600 rounded-md"
-              disabled={loading}
-            /> */}
             <label className="font-semibold block mb-2">Key Skill</label>
             <input
               type="text"
@@ -318,7 +209,6 @@ const url = `https://agentic-ai.co.in/api/agentic-ai/workflow-exe?org_id=2&workf
             {error && <p className="mt-2 text-red-400 text-sm">{error}</p>}
           </form>
 
-          {/* Filters remain same */}
           <input
             type="text"
             placeholder="Search ..."
@@ -327,7 +217,6 @@ const url = `https://agentic-ai.co.in/api/agentic-ai/workflow-exe?org_id=2&workf
             className="mb-4 px-4 py-3 rounded-lg border border-gray-600 bg-white text-gray-500 focus:outline-none"
           />
 
-          {/* Key skills list */}
           <div className="mt-6">
             <h3 className="font-bold mb-3 text-lg">🛠️ Key Skills</h3>
             <div className="flex flex-wrap gap-2 bg-white border border-gray-700 rounded-md p-3 shadow-inner min-h-[40px]">
@@ -346,10 +235,13 @@ const url = `https://agentic-ai.co.in/api/agentic-ai/workflow-exe?org_id=2&workf
             </div>
           </div>
 
-          {/* Ranges */}
-          <label className="font-semibold mb-3 block text-lg mt-6">
+          <label className="font-semibold mb-3 block text-lg text-white">
             Score Range
           </label>
+          <div className="flex justify-between mb-3 font-semibold text-sm text-white">
+            <span>{scoreRange[0]}</span>
+            <span>{scoreRange[1]}</span>
+          </div>
           <Range
             step={1}
             min={1}
@@ -357,7 +249,10 @@ const url = `https://agentic-ai.co.in/api/agentic-ai/workflow-exe?org_id=2&workf
             values={scoreRange}
             onChange={setScoreRange}
             renderTrack={({ props, children }) => (
-              <div {...props} style={{ ...props.style, height: "6px", backgroundColor: "#555" }}>
+              <div
+                {...props}
+                style={{ ...props.style, height: "6px", backgroundColor: "#555" }}
+              >
                 <div
                   style={{
                     height: "6px",
@@ -369,12 +264,16 @@ const url = `https://agentic-ai.co.in/api/agentic-ai/workflow-exe?org_id=2&workf
                 {children}
               </div>
             )}
-            renderThumb={renderScoreThumb}
+            renderThumb={renderThumb}
           />
 
-          <label className="font-semibold mt-6 mb-3 block text-lg">
+          <label className="font-semibold mt-6 mb-3 block text-lg text-white">
             Experience (years)
           </label>
+          <div className="flex justify-between mb-3 font-semibold text-sm text-white">
+            <span>{experienceRange[0]}</span>
+            <span>{experienceRange[1]}</span>
+          </div>
           <Range
             step={1}
             min={0}
@@ -382,7 +281,7 @@ const url = `https://agentic-ai.co.in/api/agentic-ai/workflow-exe?org_id=2&workf
             values={experienceRange}
             onChange={setExperienceRange}
             renderTrack={({ props, children }) => (
-              <div {...props} style={{ ...props.style, height: "6px", backgroundColor: "#555" }}>
+              <div {...props} style={{ ...props.style, height: "6px", background: "#555" }}>
                 <div
                   style={{
                     height: "6px",
@@ -394,16 +293,34 @@ const url = `https://agentic-ai.co.in/api/agentic-ai/workflow-exe?org_id=2&workf
                 {children}
               </div>
             )}
-            renderThumb={renderScoreThumb}
+            renderThumb={renderThumb}
           />
+
+          <div className="mt-6 flex flex-row gap-x-6">
+            <label className="inline-flex items-center gap-2 text-white font-semibold cursor-pointer">
+              <input
+                type="checkbox"
+                checked={filterEmail}
+                onChange={() => setFilterEmail(!filterEmail)}
+                className="rounded border-gray-400 text-[#FF5A52] focus:ring-[#FF5A52]"
+              />
+              Email
+            </label>
+            <label className="inline-flex items-center gap-2 text-white font-semibold cursor-pointer">
+              <input
+                type="checkbox"
+                checked={filterPhone}
+                onChange={() => setFilterPhone(!filterPhone)}
+                className="rounded border-gray-400 text-[#FF5A52] focus:ring-[#FF5A52]"
+              />
+              Phone
+            </label>
+          </div>
         </div>
 
-        {/* Resume Cards */}
         <motion.div layout className="flex-1 space-y-6 overflow-auto max-h-[80vh]">
           <div className="flex items-center justify-between mb-1">
-            <h2 className="text-3xl font-semibold text-[#333333]">
-              📄 Talent Sift
-            </h2>
+            <h2 className="text-3xl font-semibold text-[#333333]">📄 Talent Sift</h2>
           </div>
 
           <div className="flex justify-between items-center mb-4">
@@ -412,25 +329,26 @@ const url = `https://agentic-ai.co.in/api/agentic-ai/workflow-exe?org_id=2&workf
               {filteredResumes.length !== 1 ? "s" : ""}
             </p>
 
+            <button
+              type="button"
+              onClick={() => navigate("/")}
+              className="px-4 py-2 bg-orange-400 hover:bg-[#E14A42] text-white font-bold rounded"
+            >
+              Home
+            </button>
 
-<button
-  type="button"
-  onClick={() => navigate("/")}
-  className="px-4 py-2 bg-orange-400 hover:bg-[#E14A42] text-white font-bold rounded"
-  
->
-  Home
-</button>
-
-
-<button
-  type="button"
-  onClick={() => window.open("https://core.qntrl.com/blueprint/startitnow/job/processtab/30725000001415521/30725000000000419", "_blank")}
-  className="px-6 py-3 bg-orange-400 hover:bg-[#E14A42] text-white font-bold rounded"
->
-  Candidate Management
-</button>
-
+            <button
+              type="button"
+              onClick={() =>
+                window.open(
+                  "https://core.qntrl.com/blueprint/startitnow/job/processtab/30725000001415521/30725000000000419",
+                  "_blank"
+                )
+              }
+              className="px-6 py-3 bg-orange-400 hover:bg-[#E14A42] text-white font-bold rounded"
+            >
+              Candidate Management
+            </button>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -464,25 +382,13 @@ const url = `https://agentic-ai.co.in/api/agentic-ai/workflow-exe?org_id=2&workf
                   </div>
                 )}
 
-                <h3 className="text-xl font-semibold text-[#333333] mb-2">
-                  {resume.name}
-                </h3>
-                <p className="text-sm text-[#333333] mb-1">
-                  <strong>Score:</strong> {resume.Rank}
-                </p>
-                <p className="text-sm text-[#333333] mb-1">
-                  <strong>Experience:</strong> {resume.experience} years
-                </p>
-                <p className="text-sm text-[#555555] mb-1">
-                  <strong>Email:</strong> {resume.email}
-                </p>
-                <p className="text-sm text-[#555555] mb-3">
-                  <strong>Phone:</strong> {resume.phone}
-                </p>
+                <h3 className="text-xl font-semibold text-[#333333] mb-2">{resume.name}</h3>
+                <p className="text-sm text-[#333333] mb-1"><strong>Score:</strong> {resume.Rank}</p>
+                <p className="text-sm text-[#333333] mb-1"><strong>Experience:</strong> {resume.experience} years</p>
+                <p className="text-sm text-[#555555] mb-1"><strong>Email:</strong> {resume.email}</p>
+                <p className="text-sm text-[#555555] mb-3"><strong>Phone:</strong> {resume.phone}</p>
                 {resume.justification && (
-                  <p className="text-sm text-[#555555] italic mt-3 leading-relaxed">
-                    "{resume.justification}"
-                  </p>
+                  <p className="text-sm text-[#555555] italic mt-3 leading-relaxed">"{resume.justification}"</p>
                 )}
               </motion.div>
             ))}

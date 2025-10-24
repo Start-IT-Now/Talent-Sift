@@ -21,7 +21,7 @@ const FloatingIcon = ({ children, className }) => (
   </motion.div>
 );
 
-function JobDescriptionEditor({ value, onChange, minWords = 100, maxWords = 200, onValidChange, readOnly }) {
+function JobDescriptionEditor({ value, onChange, minWords = 100, maxWords = 500, onValidChange, readOnly }) {
   const [error, setError] = useState('');
 
   const countWords = (html) => {
@@ -345,7 +345,7 @@ const validate = () => {
                     value={formData.jobDescription}
                     onChange={(value) => handleInputChange('jobDescription', value)}
                     minWords={100}
-                    maxWords={200}
+                    maxWords={500}
                     onValidChange={setJobDescriptionIsValid}
                     readOnly={isLoading}
                   />

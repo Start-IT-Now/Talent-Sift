@@ -175,9 +175,6 @@ useEffect(() => {
     }
   };
 
-  
-{console.log("Rendering resumes:", filteredResumes)}
-
 
 
   function renderThumb({ index, props }) {

@@ -31,7 +31,16 @@ const fetchResumesByKeySkill = useCallback(async () => {
   setError("");
 
   try {
-    const url = `https://agentic-ai.co.in/api/agentic-ai/workflow-exe?org_id=2&workflow_id=resume_ranker`;
+    // ✅ Get dynamic orgId (requestor)
+    let dynamicOrgId =
+      localStorage.getItem("requestor") ||
+      new URLSearchParams(window.location.search).get("requestor") ||
+      2;
+
+    console.log("🔹 Using dynamic orgId:", dynamicOrgId);
+
+    const url = `https://agentic-ai.co.in/api/agentic-ai/workflow-exe?org_id=${dynamicOrgId}&workflow_id=resume_ranker`;
+
     const response = await fetch(url);
     const data = await response.json();
     const allExecutions = Array.isArray(data.data) ? data.data : [];
@@ -78,7 +87,7 @@ const fetchResumesByKeySkill = useCallback(async () => {
   } finally {
     setLoading(false);
   }
-}, [keySkill, setError, setSearchedResumes, setLoading, setSearched]);
+}, [keySkill]);
 
 
   // Load cached resumes after search

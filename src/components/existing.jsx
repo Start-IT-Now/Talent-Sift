@@ -19,75 +19,74 @@ const Existing = () => {
   const [loadingId, setLoadingId] = useState(null);
 
   // ✅ Fetch resumes by Key Skill
-  const fetchResumesByKeySkill = useCallback(async () => {
-    if (!keySkill.trim()) {
-      setError("Please enter a Key Skill.");
+const fetchResumesByKeySkill = useCallback(async () => {
+  if (!keySkill.trim()) {
+    setError("Please enter a Key Skill.");
+    setSearchedResumes([]);
+    return;
+  }
+
+  setSearched(true);
+  setLoading(true);
+  setError("");
+
+  try {
+    const url = `https://agentic-ai.co.in/api/agentic-ai/workflow-exe?org_id=2&workflow_id=resume_ranker`;
+    const response = await fetch(url);
+    const data = await response.json();
+    const allExecutions = Array.isArray(data.data) ? data.data : [];
+
+    const matchedExecutions = allExecutions.filter(
+      (item) =>
+        item.exe_name &&
+        item.exe_name.toLowerCase().includes(keySkill.toLowerCase())
+    );
+
+    if (matchedExecutions.length === 0) {
+      setError(`No resumes found for Key Skill: ${keySkill}`);
       setSearchedResumes([]);
       return;
     }
 
-    setSearched(true);
-    setLoading(true);
-    setError("");
+    const mappedResumes = matchedExecutions.flatMap((execution) => {
+      const results = Array.isArray(execution.result) ? execution.result : [];
+      return results.map((item, idx) => ({
+        id: `${execution.exe_name}-${idx}`,
+        name: item.name || `Candidate ${idx + 1}`,
+        Rank: item.score || 0,
+        justification: item.justification || "",
+        experience: typeof item.experience === "number" ? item.experience : 0,
+        email: item.email === "xxx" ? "No email" : item.email || "No email",
+        phone: item.phone === "xxx" ? "No phone" : item.phone || "No phone",
+        keySkills: Array.isArray(item.keySkills)
+          ? item.keySkills
+          : [execution.exe_name],
+        executionName: execution.exe_name,
+      }));
+    });
 
-    try {
-      const url = `https://agentic-ai.co.in/api/agentic-ai/workflow-exe?org_id=2&workflow_id=resume_ranker`;
-      const response = await fetch(url);
-      const data = await response.json();
-      const allExecutions = Array.isArray(data.data) ? data.data : [];
+    setSearchedResumes(mappedResumes);
+    setError(null);
+    localStorage.setItem(
+      `resumeResults_key_${keySkill}`,
+      JSON.stringify(mappedResumes)
+    );
+  } catch (err) {
+    console.error(err);
+    setError("Error retrieving resumes.");
+    setSearchedResumes([]);
+  } finally {
+    setLoading(false);
+  }
+}, [keySkill, setError, setSearchedResumes, setLoading, setSearched]);
 
-      const matchedExecutions = allExecutions.filter(
-        (item) =>
-          item.exe_name &&
-          item.exe_name.toLowerCase().includes(keySkill.toLowerCase())
-      );
-
-      if (matchedExecutions.length === 0) {
-        setError(`No resumes found for Key Skill: ${keySkill}`);
-        setSearchedResumes([]);
-        return;
-      }
-
-      const mappedResumes = matchedExecutions.flatMap((execution) => {
-        const results = Array.isArray(execution.result) ? execution.result : [];
-        return results.map((item, idx) => ({
-          id: `${execution.exe_name}-${idx}`,
-          name: item.name || `Candidate ${idx + 1}`,
-          Rank: item.score || 0,
-          justification: item.justification || "",
-          experience: typeof item.experience === "number" ? item.experience : 0,
-          email: item.email === "xxx" ? "No email" : item.email || "No email",
-          phone: item.phone === "xxx" ? "No phone" : item.phone || "No phone",
-          keySkills: Array.isArray(item.keySkills)
-            ? item.keySkills
-            : [execution.exe_name],
-          executionName: execution.exe_name,
-        }));
-      });
-
-      setSearchedResumes(mappedResumes);
-      setError(null);
-
-      // Cache by key skill
-      localStorage.setItem(
-        `resumeResults_key_${keySkill}`,
-        JSON.stringify(mappedResumes)
-      );
-    } catch (err) {
-      console.error(err);
-      setError("Error retrieving resumes.");
-      setSearchedResumes([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [keySkill]);
 
   // Load cached resumes after search
 useEffect(() => {
   if (!searched) return;
   const key = `resumeResults_key_${keySkill}`;
   const stored = localStorage.getItem(key);
-  if (stored && searchedResumes.length === 0) { // only load if empty
+  if (stored) {
     try {
       const parsed = JSON.parse(stored);
       if (Array.isArray(parsed)) setSearchedResumes(parsed);
@@ -95,7 +94,8 @@ useEffect(() => {
       console.error("Failed to parse local resume data", e);
     }
   }
-}, [keySkill, searched, searchedResumes.length]);
+}, [keySkill, searched]);
+
 
 
   const combinedResumes = useMemo(
@@ -166,6 +166,11 @@ useEffect(() => {
     }
   };
 
+  
+{console.log("Rendering resumes:", filteredResumes)}
+
+
+
   function renderThumb({ index, props }) {
     return (
       <div
@@ -177,26 +182,36 @@ useEffect(() => {
   }
 
   return (
-    <div className="min-h-screen w-full bg-white p-4">
-      <div className="shadow-lg rounded-xl w-full p-4 flex flex-col md:flex-row gap-6">
-        {/* Sidebar Filters */}
-        <div className="w-full md:w-64 bg-gray-700 rounded-xl p-4 shadow-md flex-shrink-0 text-[#EAEAEA]">
+<div className="min-h-screen w-full bg-white p-4">
+  <div className="shadow-lg rounded-xl w-full p-4 flex flex-col md:flex-row gap-6 h-full">
+    
+    {/* Sidebar Filters */}
+    <div className="w-full md:w-64 bg-gray-700 rounded-xl p-4 shadow-md flex-shrink-0 text-[#EAEAEA]">
           <h3 className="font-bold mb-5 text-xl">🔍 Search Resumes</h3>
 
-          <form
-            className="mb-4"
-            onSubmit={(e) => {
-              e.preventDefault();
-              fetchResumesByKeySkill();
-            }}
-          >
-            <label className="font-semibold block mb-2">Key Skill</label>
+<form
+  onSubmit={(e) => {
+    e.preventDefault();
+    if (!loading) fetchResumesByKeySkill();
+  }}
+>
+
+            <label className="font-semibold block mb-4">Key Skill</label>
             <input
               type="text"
               placeholder="Enter Key Skill"
               value={keySkill}
-              onChange={(e) => setKeySkill(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-600 bg-white text-gray-600 rounded-md"
+              onChange={(e) => {
+              setKeySkill(e.target.value);
+              setSearched(false);
+              }}
+                onKeyDown={(e) => {
+    if (e.key === "Enter" && !loading) {
+      e.preventDefault();
+      fetchResumesByKeySkill();
+    }
+  }}
+              className="w-full px-4 py-2 border border-gray-600 bg-white text-gray-600 rounded-md "
               disabled={loading}
             />
             <button
@@ -214,7 +229,7 @@ useEffect(() => {
             placeholder="Search ..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="mb-4 px-4 py-3 rounded-lg border border-gray-600 bg-white text-gray-500 focus:outline-none"
+            className="mb-4 mt-4 px-4 py-3 rounded-lg border border-gray-600 bg-white text-gray-500 focus:outline-none"
           />
 
           <div className="mt-6">
@@ -318,70 +333,79 @@ useEffect(() => {
           </div>
         </div>
 
-        <motion.div layout className="flex-1 space-y-6 overflow-auto max-h-[80vh]">
-          <div className="flex items-center justify-between mb-1">
-            <h2 className="text-3xl font-semibold text-[#333333]">📄 Talent Sift</h2>
-          </div>
+    <motion.div 
+      layout
+className="flex-1 flex flex-col space-y-6 overflow-auto min-h-[500px] max-h-[150vh]"
 
-          <div className="flex justify-between items-center mb-4">
-            <p className="text-orange-400 font-medium">
-              Showing {filteredResumes.length} result
-              {filteredResumes.length !== 1 ? "s" : ""}
-            </p>
+    >
+      <div className="flex items-center justify-between mb-1">
+        <h2 className="text-3xl font-semibold text-[#333333]">📄 Talent Sift</h2>
+      </div>
 
-            <button
-              type="button"
-              onClick={() => navigate("/")}
-              className="px-4 py-2 bg-orange-400 hover:bg-[#E14A42] text-white font-bold rounded"
-            >
-              Home
-            </button>
+      <div className="flex justify-between items-center mb-4">
+        <p className="text-orange-400 font-medium">
+          Showing {filteredResumes.length} result
+          {filteredResumes.length !== 1 ? "s" : ""}
+        </p>
 
-            <button
-              type="button"
-              onClick={() =>
-                window.open(
-                  "https://core.qntrl.com/blueprint/startitnow/job/processtab/30725000001415521/30725000000000419",
-                  "_blank"
-                )
-              }
-              className="px-6 py-3 bg-orange-400 hover:bg-[#E14A42] text-white font-bold rounded"
-            >
-              Candidate Management
-            </button>
-          </div>
+        <div className="flex gap-3">
+          <button
+            type="button"
+            onClick={() => navigate("/")}
+            className="px-4 py-2 bg-orange-400 hover:bg-[#E14A42] text-white font-bold rounded"
+          >
+            Home
+          </button>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {filteredResumes.map((resume) => (
-              <motion.div
-                key={resume.id}
-                layout
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                transition={{ duration: 0.2 }}
-                className="bg-white rounded-xl shadow-md p-5 flex flex-col relative"
-              >
-                {!resume.shortlisted && (
-                  <button
-                    onClick={() => handleShortlist(resume)}
-                    disabled={loadingId === resume.id}
-                    className={`absolute top-2 right-2 px-3 py-1 rounded-md font-bold text-m transition ${
-                      loadingId === resume.id
-                        ? "bg-gray-400 cursor-not-allowed text-white"
-                        : "bg-orange-400 hover:bg-[#E14A42] text-white"
-                    }`}
-                  >
-                    {loadingId === resume.id ? "..." : "Shortlist"}
-                  </button>
-                )}
+          <button
+            type="button"
+            onClick={() =>
+              window.open(
+                "https://core.qntrl.com/blueprint/startitnow/job/processtab/30725000001415521/30725000000000419",
+                "_blank"
+              )
+            }
+            className="px-6 py-3 bg-orange-400 hover:bg-[#E14A42] text-white font-bold rounded"
+          >
+            Candidate Management
+          </button>
+        </div>
+      </div>
 
-                {resume.shortlisted && (
-                  <div className="absolute top-2 right-2 bg-green-500 text-white text-xs font-bold px-2 py-1 rounded-md shadow">
-                    ✅ Shortlisted
-                  </div>
-                )}
+      {/* Resume Cards */}
+ <div
+  key={keySkill} // 👈 ensures full refresh when skill changes
+  className="grid grid-cols-1 md:grid-cols-2 gap-6 flex-1 overflow-y-auto pb-6"
+>
+  {filteredResumes.map((resume, idx) => (
+    <motion.div
+      key={`${keySkill}-${resume.id}-${idx}`} // 👈 unique per skill + resume
+      layout
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.95 }}
+      transition={{ duration: 0.2 }}
+      className="bg-white rounded-xl shadow-md p-5 flex flex-col relative"
+    >
+      {!resume.shortlisted && (
+        <button
+          onClick={() => handleShortlist(resume)}
+          disabled={loadingId === resume.id}
+          className={`absolute top-2 right-2 px-3 py-1 rounded-md font-bold text-m transition ${
+            loadingId === resume.id
+              ? "bg-gray-400 cursor-not-allowed text-white"
+              : "bg-orange-400 hover:bg-[#E14A42] text-white"
+          }`}
+        >
+          {loadingId === resume.id ? "..." : "Shortlist"}
+        </button>
+      )}
 
+      {resume.shortlisted && (
+        <div className="absolute top-2 right-2 bg-green-500 text-white text-xs font-bold px-2 py-1 rounded-md shadow">
+          ✅ Shortlisted
+        </div>
+      )}
                 <h3 className="text-xl font-semibold text-[#333333] mb-2">{resume.name}</h3>
                 <p className="text-sm text-[#333333] mb-1"><strong>Score:</strong> {resume.Rank}</p>
                 <p className="text-sm text-[#333333] mb-1"><strong>Experience:</strong> {resume.experience} years</p>

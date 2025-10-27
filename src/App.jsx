@@ -20,6 +20,7 @@ function App() {
     owner: "",
     email: "",
     jobDescription: "",
+    requestor: "",
     resumeFiles: [],
   });
 
@@ -51,6 +52,7 @@ function App() {
       industry: decodeSafe(params.get('industry') || ''),
       owner: decodeSafe(params.get('owner') || ' Default Owner'),
       client: decodeSafe(params.get('client') || 'Default Client'),
+      requestor: decodeSafe(params.get('requestor') || 'Default Requestor'),
       jobtype: decodeSafe(params.get('jobtype') || ''), 
       email: decodeSafe(params.get('mail') || ''), // THIS MUST BE a valid option value or empty string
     }));
@@ -89,9 +91,10 @@ console.log("success" + JSON.stringify(data));
     localStorage.setItem("industry", data.industry);
     localStorage.setItem("client", data.client);
     localStorage.setItem("owner", data.owner);
+    localStorage.setItem("requestor", data.requestor);
     localStorage.setItem("succees",JSON.stringify(data));
 
-    if (!data.jobTitle || !data.jobtype || !data.jobDescription || !data.email || !data.client || !data.industry || !data.owner) {
+    if (!data.jobTitle || !data.jobtype || !data.jobDescription || !data.email || !data.client || !data.industry || !data.owner || !data.requestor) {
       toast({
         title: "Missing Information",
         description: "Please fill in all required fields before submitting.",
@@ -126,7 +129,6 @@ if (validateRes.status !== 200 || validateData.status !== "success") {
   });
   return;
 }
-
 
 
     try {
@@ -199,6 +201,7 @@ if (validateRes.status !== 200 || validateData.status !== "success") {
 const params = new URLSearchParams({
   client: data.client || "",
   industry: data.industry || "",
+  requestor: data.requestor || "",
   owner: data.owner || "",
   skills: data.requiredSkills || "",
 }).toString();
@@ -273,6 +276,7 @@ navigate(`/resumes?${params}`);
             client={formData.client}
             industry={formData.industry}
             owner={formData.owner}
+            requestor={formData.requestor}
             requiredSkills={formData.requiredSkills}/>
           )}
         </div>

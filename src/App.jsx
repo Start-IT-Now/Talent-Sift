@@ -85,6 +85,20 @@ function App() {
     }));
   };
 
+  useEffect(() => {
+  const storedRequestor = localStorage.getItem("requestor");
+  if (storedRequestor) {
+    setOrgId(storedRequestor); // ✅ Set as orgId
+  } else {
+    const params = new URLSearchParams(window.location.search);
+    const reqFromUrl = params.get("requestor");
+    if (reqFromUrl) {
+      localStorage.setItem("requestor", reqFromUrl);
+      setOrgId(reqFromUrl);
+    }
+  }
+}, []);
+
   // ✅ New Submission
   const handleNewSubmit = async (data) => {
 console.log("success" + JSON.stringify(data));
@@ -131,6 +145,7 @@ if (validateRes.status !== 200 || validateData.status !== "success") {
 }
 
 
+
     try {
       const form = new FormData();
 
@@ -140,14 +155,20 @@ if (validateRes.status !== 200 || validateData.status !== "success") {
         return div.textContent || "";
       };
 
-      const jobPayload = {
-        org_id: 2, // ✅ Hardcoded for now
-        exe_name: data.requiredSkills || "run 1", // ✅ Job Title used as exe_name
-        workflow_id: "resume_ranker",
-        job_description: stripHtml(data.jobDescription),
-      };
+const dynamicOrgId =
+  data.requestor || orgId || localStorage.getItem("requestor") || 2; // fallback to 2 if missing
+
+const jobPayload = {
+  org_id: dynamicOrgId, // ✅ requestor used as org_id
+  exe_name: data.requiredSkills || "run 1",
+  workflow_id: "resume_ranker",
+  job_description: stripHtml(data.jobDescription),
+};
+
 
       console.log("Sending payload:", jobPayload);
+      console.log("🧠 Using org_id (requestor):", dynamicOrgId);
+
 
       form.append("data", JSON.stringify(jobPayload));
 

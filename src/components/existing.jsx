@@ -5,6 +5,9 @@ import { useNavigate, useLocation } from "react-router-dom";
 
 const Existing = ({ client, industry, owner, requestor, requiredSkills, onGoHome }) => {
   const navigate = useNavigate();
+const location = useLocation();
+  const query = new URLSearchParams(location.search);
+const orgId = query.get("org_id");
   const [uploadedResumes, setUploadedResumes] = useState([]);
   const [searchedResumes, setSearchedResumes] = useState([]);
   const [keySkill, setKeySkill] = useState("");
@@ -31,9 +34,8 @@ const fetchResumesByKeySkill = useCallback(async () => {
   setError("");
 
   try {
-    // ✅ Dynamically fetch from URL each time
     const params = new URLSearchParams(window.location.search);
-    const dynamicOrgId = params.get("requestor") || 2; // fallback to 2
+    const dynamicOrgId = params.get("org_id") || 2; // ✅ Use org_id from URL
 
     console.log("🔹 Using dynamic orgId:", dynamicOrgId);
 
@@ -41,7 +43,6 @@ const fetchResumesByKeySkill = useCallback(async () => {
 
     const response = await fetch(url);
     const data = await response.json();
-
     const allExecutions = Array.isArray(data.data) ? data.data : [];
 
     const matchedExecutions = allExecutions.filter(
@@ -170,7 +171,6 @@ useEffect(() => {
   }
 };
 
-const location = useLocation();
 console.log("Current route:", location.pathname);
 
 function renderThumb({ index, props }) {

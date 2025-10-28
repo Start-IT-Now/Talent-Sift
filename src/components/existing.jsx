@@ -355,7 +355,8 @@ className="flex-1 flex flex-col space-y-6 overflow-auto min-h-[500px] max-h-[150
   type="button"
   onClick={() => {
     onGoHome?.(); // ✅ switch App back to “New Case” view
-    navigate("/"); // ✅ keep URL consistent
+   navigate(`/resumes?org_id=${data.requestor || orgId}&client=${data.client}&industry=${data.industry}&owner=${data.owner}&skills=${data.requiredSkills}`);
+// ✅ keep URL consistent
   }}
   className="px-4 py-2 bg-orange-400 hover:bg-[#E14A42] text-white font-bold rounded"
 >

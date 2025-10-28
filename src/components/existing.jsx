@@ -1,9 +1,9 @@
 import React, { useState, useMemo, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import { Range } from "react-range";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 
-const Existing = () => {
+const Existing = ({ client, industry, owner, requestor, requiredSkills, onGoHome }) => {
   const navigate = useNavigate();
   const [uploadedResumes, setUploadedResumes] = useState([]);
   const [searchedResumes, setSearchedResumes] = useState([]);
@@ -31,11 +31,9 @@ const fetchResumesByKeySkill = useCallback(async () => {
   setError("");
 
   try {
-    // ✅ Get dynamic orgId (requestor)
-    let dynamicOrgId =
-      localStorage.getItem("requestor") ||
-      new URLSearchParams(window.location.search).get("requestor") ||
-      2;
+    // ✅ Dynamically fetch from URL each time
+    const params = new URLSearchParams(window.location.search);
+    const dynamicOrgId = params.get("requestor") || 2; // fallback to 2
 
     console.log("🔹 Using dynamic orgId:", dynamicOrgId);
 
@@ -43,6 +41,7 @@ const fetchResumesByKeySkill = useCallback(async () => {
 
     const response = await fetch(url);
     const data = await response.json();
+
     const allExecutions = Array.isArray(data.data) ? data.data : [];
 
     const matchedExecutions = allExecutions.filter(
@@ -76,10 +75,6 @@ const fetchResumesByKeySkill = useCallback(async () => {
 
     setSearchedResumes(mappedResumes);
     setError(null);
-    localStorage.setItem(
-      `resumeResults_key_${keySkill}`,
-      JSON.stringify(mappedResumes)
-    );
   } catch (err) {
     console.error(err);
     setError("Error retrieving resumes.");
@@ -170,14 +165,15 @@ useEffect(() => {
     } catch (error) {
       console.error(error);
       alert("⚠️ Error sending email. Please try again.");
-    } finally {
-      setLoadingId(null);
-    }
-  };
+  } finally {
+    setLoadingId(null);
+  }
+};
 
+const location = useLocation();
+console.log("Current route:", location.pathname);
 
-
-  function renderThumb({ index, props }) {
+function renderThumb({ index, props }) {
     return (
       <div
         {...props}
@@ -355,13 +351,17 @@ className="flex-1 flex flex-col space-y-6 overflow-auto min-h-[500px] max-h-[150
         </p>
 
         <div className="flex gap-3">
-          <button
-            type="button"
-            onClick={() => navigate("/")}
-            className="px-4 py-2 bg-orange-400 hover:bg-[#E14A42] text-white font-bold rounded"
-          >
-            Home
-          </button>
+<button
+  type="button"
+  onClick={() => {
+    onGoHome?.(); // ✅ switch App back to “New Case” view
+    navigate("/"); // ✅ keep URL consistent
+  }}
+  className="px-4 py-2 bg-orange-400 hover:bg-[#E14A42] text-white font-bold rounded"
+>
+  Home
+</button>
+
 
           <button
             type="button"

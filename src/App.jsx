@@ -28,6 +28,7 @@ function App() {
   const [submittedExisting, setSubmittedExisting] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
+  
 
   // Auto-populate jobDescription and requiredSkills from URL params on mount
   useEffect(() => {
@@ -298,7 +299,8 @@ navigate(`/resumes?${params}`);
             industry={formData.industry}
             owner={formData.owner}
             requestor={formData.requestor}
-            requiredSkills={formData.requiredSkills}/>
+            requiredSkills={formData.requiredSkills}
+            onGoHome={() => setSubmittedExisting(false)}/>
           )}
         </div>
 

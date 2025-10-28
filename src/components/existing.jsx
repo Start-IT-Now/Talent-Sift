@@ -7,7 +7,14 @@ const Existing = ({ client, industry, owner, requestor, requiredSkills, onGoHome
   const navigate = useNavigate();
 const location = useLocation();
   const query = new URLSearchParams(location.search);
-const orgId = query.get("org_id") || query.get("requestor") || 2;
+const orgIdParam = query.get("org_id");
+const requestorParam = query.get("requestor");
+const orgId = orgIdParam && orgIdParam.trim() !== "" 
+  ? orgIdParam 
+  : (requestorParam && requestorParam.trim() !== "" 
+      ? requestorParam 
+      : 2);
+
   const [uploadedResumes, setUploadedResumes] = useState([]);
   const [searchedResumes, setSearchedResumes] = useState([]);
   const [keySkill, setKeySkill] = useState("");

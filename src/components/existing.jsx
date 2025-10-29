@@ -343,7 +343,7 @@ const Existing = ({ client, industry, owner, requestor, requiredSkills, onGoHome
                 onClick={() => {
                   onGoHome?.();
                   navigate(
-                    `/resumes?org_id=${orgId}&client=${client}&industry=${industry}&owner=${owner}&skills=${requiredSkills}`
+                    `/`
                   );
                 }}
                 className="px-4 py-2 bg-orange-400 hover:bg-[#E14A42] text-white font-bold rounded"

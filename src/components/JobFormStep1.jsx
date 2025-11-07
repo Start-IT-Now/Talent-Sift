@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import ResumeMultiDropzoneStyled from '@/components/ResumeMultiDropzoneStyled';
+import { supabase } from '@/lib/supabaseClient';
 import pic from '../pic.png';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
@@ -68,7 +69,7 @@ function JobDescriptionEditor({ value, onChange, minWords = 100, maxWords = 500,
   );
 }
 
-const JobFormStep1 = ({ formData, handleInputChange, onNewSubmit, onExistingSubmit }) => {
+const JobFormStep1 = ({ formData, handleInputChange, onExistingSubmit }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [jobDescriptionIsValid, setJobDescriptionIsValid] = useState(false);
   const [mode, setMode] = useState('new');
@@ -97,6 +98,58 @@ const validate = () => {
   }
   setErrors(newErrors);
   return Object.keys(newErrors).length === 0;
+};
+
+const onNewSubmit = async (formData) => {
+  try {
+    console.log('Uploading to Supabase...', formData);
+    
+    // ✅ 1. Upload resumes to Supabase Storage
+    const uploadedUrls = [];
+
+    for (const file of formData.resumeFiles) {
+      const filePath = `Talent Sift/${Date.now()}_${file.name}`;
+      const { data, error: uploadError } = await supabase.storage
+        .from('Talent Sift')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: publicUrlData } = supabase
+        .storage
+        .from('Talent Sift')
+        .getPublicUrl(filePath);
+
+      uploadedUrls.push(publicUrlData.publicUrl);
+    }
+
+    // ✅ 2. Insert data into "applicants" table
+    const { error: insertError } = await supabase.from('applicants').insert([
+      {
+        name: formData.jobTitle || 'N/A',
+        score: '0', // you can update later with ranking logic
+        email: formData.email,
+        phone: formData.phone || null,
+        skills: formData.requiredSkills,
+        job_title: formData.jobTitle,
+        job_description: formData.jobDescription,
+        years_of_experience: formData.yearsOfExperience,
+        industry: formData.industry,
+        owner: formData.owner || 'Default Owner',
+        client: formData.client || 'Default Client',
+        requestor: formData.requestor || 'Default Requestor',
+        job_type: formData.jobtype,
+        resume_url: uploadedUrls.join(','), // store all resume URLs
+      },
+    ]);
+
+    if (insertError) throw insertError;
+
+    alert('✅ Successfully uploaded and stored in Supabase!');
+  } catch (error) {
+    console.error('❌ Upload failed:', error);
+    alert('❌ Error uploading data to Supabase. Check console.');
+  }
 };
 
   const onSubmit = async () => {

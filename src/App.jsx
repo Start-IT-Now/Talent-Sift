@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { Toaster } from "@/components/ui/toaster";
 import { useToast } from "@/components/ui/use-toast";
+import { supabase } from "@/lib/supabaseClient";
 import Footer from "@/components/Footer";
 import JobFormStep1 from "@/components/JobFormStep1";
 import ResumeList from "@/components/existing";
@@ -73,7 +74,7 @@ function App() {
     });
     return div.textContent || div.innerText || '';
   };
-  // ✅ Restore orgId on load if available
+  // Restore orgId on load if available
   useEffect(() => {
     const storedId = localStorage.getItem("caseId");
     if (storedId) setOrgId(storedId);
@@ -89,7 +90,7 @@ function App() {
   useEffect(() => {
   const storedRequestor = localStorage.getItem("requestor");
   if (storedRequestor) {
-    setOrgId(storedRequestor); // ✅ Set as orgId
+    setOrgId(storedRequestor); // Set as orgId
   } else {
     const params = new URLSearchParams(window.location.search);
     const reqFromUrl = params.get("requestor");
@@ -100,7 +101,29 @@ function App() {
   }
 }, []);
 
-  // ✅ New Submission
+//  Upload resume file to Supabase Storage and get its public URL
+const uploadResumeToSupabase = async (file) => {
+  if (!file) return null;
+  const fileName = `${Date.now()}_${file.name}`;
+
+  const { data, error } = await supabase.storage
+    .from("Talent Sift") // Your bucket name
+    .upload(fileName, file);
+
+  if (error) {
+    console.error("❌ Resume upload failed:", error.message);
+    return null;
+  }
+
+  const { data: publicData } = supabase.storage
+    .from("Talent Sift")
+    .getPublicUrl(fileName);
+
+  return publicData.publicUrl;
+};
+
+
+  //  New Submission
   const handleNewSubmit = async (data) => {
 console.log("success" + JSON.stringify(data));
     localStorage.setItem("industry", data.industry);
@@ -168,7 +191,7 @@ const jobPayload = {
 
 
       console.log("Sending payload:", jobPayload);
-      console.log("🧠 Using org_id (requestor):", dynamicOrgId);
+      console.log(" Using org_id (requestor):", dynamicOrgId);
 
 
       form.append("data", JSON.stringify(jobPayload));
@@ -191,6 +214,46 @@ const jobPayload = {
       }
 
       console.log("✅ Response data:", result.data);
+
+// Upload resumes to Supabase and store URLs
+const uploadedResumeUrls = [];
+for (const file of data.resumeFiles) {
+  const url = await uploadResumeToSupabase(file);
+  if (url) uploadedResumeUrls.push(url);
+}
+
+// Save submission in Supabase DB
+try {
+  const { data: saved, error: dbError } = await supabase.from("applicants").insert([
+    {
+      name: data.owner || "Unknown Owner",
+      email: data.email,
+      phone: null,
+      skills: data.requiredSkills,
+      score: "0",
+      job_title: data.jobTitle,
+      job_description: stripHtml(data.jobDescription),
+      years_of_experience: data.yearsOfExperience,
+      industry: data.industry,
+      owner: data.owner,
+      client: data.client,
+      requestor: data.requestor,
+      job_type: data.jobtype,
+      resume_url: uploadedResumeUrls.length > 1 
+        ? JSON.stringify(uploadedResumeUrls)  // store all as JSON if multiple
+        : uploadedResumeUrls[0] || null,      // single resume case
+    },
+  ]);
+
+  if (dbError) {
+    console.error("⚠️ Failed to save to Supabase:", dbError.message);
+  } else {
+    console.log("✅ Saved to Supabase with resume URLs:", saved);
+  }
+} catch (dbCatchErr) {
+  console.error("❌ DB error:", dbCatchErr);
+}
+
 
       if (result.data?.id) {
         setOrgId(result.data.id); // ✅ Store in state

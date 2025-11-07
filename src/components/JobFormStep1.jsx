@@ -150,25 +150,25 @@ const onSubmit = async () => {
     }
 
     // Step 3️⃣: Store results + metadata in Supabase table
-    const { error: insertError } = await supabase.from('applicants').insert([
-      {
-        name: formData.jobTitle,
-        email: formData.email,
-        phone: formData.phone || null,
-        skills: formData.requiredSkills,
-        job_title: formData.jobTitle,
-        job_description: formData.jobDescription,
-        years_of_experience: formData.yearsOfExperience,
-        industry: formData.industry,
-        owner: formData.owner || 'Default Owner',
-        client: formData.client || 'Default Client',
-        requestor: formData.requestor || 'Default Requestor',
-        job_type: formData.jobtype,
-        resume_url: uploadedUrls.join(','),
-        score: agentResult?.output?.score || '0', // Agent's ranking result
-        agent_output: JSON.stringify(agentResult), // optional full JSON
-      },
-    ]);
+   const { error: insertError } = await supabase.from('applicants').insert([
+  {
+    name: formData.jobTitle,
+    email: formData.email,
+    phone: formData.phone || null,
+    skills: formData.requiredSkills,
+    job_title: formData.jobTitle,
+    job_description: formData.jobDescription,
+    years_of_experience: formData.yearsOfExperience,
+    industry: formData.industry,
+    owner: formData.owner || 'Default Owner',
+    client: formData.client || 'Default Client',
+    requestor: formData.requestor || 'Default Requestor',
+    job_type: formData.jobtype,
+    resume_url: uploadedUrls, // keep as array if using jsonb
+    score: agentResult?.output?.score || '0',
+    agent_output: agentResult?.output || {},
+  },
+]);
 
     if (insertError) throw insertError;
 

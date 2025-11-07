@@ -107,7 +107,7 @@ const onSubmit = async () => {
   try {
     // Step 1️⃣: Send to Agent API
     console.log('Sending data to Agent API...');
-    const agentResponse = await fetch('https://agentic-ai.co.in/api/agentic-ai/workflow-execute', {
+    const agentResponse = await fetch('https://agentic-ai.co.in/api/agentic-ai/workflow-exe', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

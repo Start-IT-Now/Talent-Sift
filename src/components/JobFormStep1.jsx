@@ -100,11 +100,37 @@ const validate = () => {
   return Object.keys(newErrors).length === 0;
 };
 
-const onNewSubmit = async (formData) => {
+const onSubmit = async () => {
+  if (!validate()) return;
+  setIsLoading(true);
+
   try {
-    console.log('Uploading to Supabase...', formData);
-    
-    // ✅ 1. Upload resumes to Supabase Storage
+    // Step 1️⃣: Send to Agent API
+    console.log('Sending data to Agent API...');
+    const agentResponse = await fetch('https://agentic-ai.co.in/api/agentic-ai/workflow-execute', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        workflow_id: 'your_workflow_id_here',
+        input_data: {
+          jobTitle: formData.jobTitle,
+          jobDescription: formData.jobDescription,
+          keySkills: formData.requiredSkills,
+          yearsOfExperience: formData.yearsOfExperience,
+          email: formData.email,
+        },
+      }),
+    });
+
+    const agentResult = await agentResponse.json();
+
+    if (!agentResponse.ok) {
+      throw new Error(`Agent API Error: ${agentResult?.message || 'Unknown error'}`);
+    }
+
+    console.log('✅ Agent results received:', agentResult);
+
+    // Step 2️⃣: Upload resumes to Supabase
     const uploadedUrls = [];
 
     for (const file of formData.resumeFiles) {
@@ -123,11 +149,10 @@ const onNewSubmit = async (formData) => {
       uploadedUrls.push(publicUrlData.publicUrl);
     }
 
-    // ✅ 2. Insert data into "applicants" table
+    // Step 3️⃣: Store results + metadata in Supabase table
     const { error: insertError } = await supabase.from('applicants').insert([
       {
-        name: formData.jobTitle || 'N/A',
-        score: '0', // you can update later with ranking logic
+        name: formData.jobTitle,
         email: formData.email,
         phone: formData.phone || null,
         skills: formData.requiredSkills,
@@ -139,36 +164,23 @@ const onNewSubmit = async (formData) => {
         client: formData.client || 'Default Client',
         requestor: formData.requestor || 'Default Requestor',
         job_type: formData.jobtype,
-        resume_url: uploadedUrls.join(','), // store all resume URLs
+        resume_url: uploadedUrls.join(','),
+        score: agentResult?.output?.score || '0', // Agent's ranking result
+        agent_output: JSON.stringify(agentResult), // optional full JSON
       },
     ]);
 
     if (insertError) throw insertError;
 
-    alert('✅ Successfully uploaded and stored in Supabase!');
+    alert('✅ Successfully processed and uploaded to Supabase!');
   } catch (error) {
-    console.error('❌ Upload failed:', error);
-    alert('❌ Error uploading data to Supabase. Check console.');
+    console.error('❌ Error in process:', error);
+    alert(`Upload failed: ${error.message}`);
+  } finally {
+    setIsLoading(false);
   }
 };
 
-  const onSubmit = async () => {
-    if (!validate()) return;
-    setIsLoading(true);
-    try {
-      await onNewSubmit(formData);
-      const skillsArray = formData.requiredSkills
-        .split(',')
-        .map((skill) => skill.trim())
-        .filter(Boolean);
-      localStorage.setItem('keySkills', JSON.stringify(skillsArray));
-    } catch (error) {
-      console.error('Submission error:', error);
-        console.log('Validation errors:', errors, formData);
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   useEffect(() => {
     const runExisting = async () => {

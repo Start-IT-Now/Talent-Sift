@@ -69,7 +69,7 @@ function JobDescriptionEditor({ value, onChange, minWords = 100, maxWords = 500,
   );
 }
 
-const JobFormStep1 = ({ formData, handleInputChange, onExistingSubmit }) => {
+const JobFormStep1 = ({ formData, handleInputChange, onExistingSubmit, onNewSubmit }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [jobDescriptionIsValid, setJobDescriptionIsValid] = useState(false);
   const [mode, setMode] = useState('new');
@@ -210,7 +210,7 @@ const handleNewSubmit = async (e) => {
               {/* New Case Form */}
               {mode === 'new' && (
             <form onSubmit={handleNewSubmit}>
-              
+
                 {/* Job Title & Experience */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">

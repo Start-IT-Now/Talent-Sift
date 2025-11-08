@@ -100,88 +100,10 @@ const validate = () => {
   return Object.keys(newErrors).length === 0;
 };
 
-const onSubmit = async () => {
+const onSubmit = async (e) => {
+  e.preventDefault();
   if (!validate()) return;
-  setIsLoading(true);
-
-  try {
-    // Step 1️⃣: Send to Agent API
-    console.log('Sending data to Agent API...');
-    const agentResponse = await fetch('https://agentic-ai.co.in/api/agentic-ai/workflow-exe', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        data: {
-          workflow_id: 'resume_ranker',
-          input_data: {
-            source: 'web',
-            jobTitle: formData.jobTitle,
-            jobDescription: formData.jobDescription,
-            keySkills: formData.requiredSkills,
-            yearsOfExperience: formData.yearsOfExperience,
-            email: formData.email,
-          },
-        },
-      }),
-    });
-
-    const agentResult = await agentResponse.json();
-
-    if (!agentResponse.ok) {
-      throw new Error(`Agent API Error: ${agentResult?.message || 'Unknown error'}`);
-    }
-
-    console.log('✅ Agent results received:', agentResult);
-
-    // Step 2️⃣: Upload resumes to Supabase
-    const uploadedUrls = [];
-
-    for (const file of formData.resumeFiles) {
-      const filePath = `Talent Sift/${Date.now()}_${file.name}`;
-      const { data, error: uploadError } = await supabase.storage
-        .from('Talent Sift')
-        .upload(filePath, file);
-
-      if (uploadError) throw uploadError;
-
-      const { data: publicUrlData } = supabase
-        .storage
-        .from('Talent Sift')
-        .getPublicUrl(filePath);
-
-      uploadedUrls.push(publicUrlData.publicUrl);
-    }
-
-    // Step 3️⃣: Store results + metadata in Supabase table
-    const { error: insertError } = await supabase.from('applicants').insert([
-      {
-        name: formData.jobTitle,
-        email: formData.email,
-        phone: formData.phone || null,
-        skills: formData.requiredSkills,
-        job_title: formData.jobTitle,
-        job_description: formData.jobDescription,
-        years_of_experience: formData.yearsOfExperience,
-        industry: formData.industry,
-        owner: formData.owner || 'Default Owner',
-        client: formData.client || 'Default Client',
-        requestor: formData.requestor || 'Default Requestor',
-        job_type: formData.jobtype,
-        resume_url: uploadedUrls, // keep as array if using jsonb
-        score: agentResult?.output?.score || '0',
-        agent_output: agentResult?.output || {},
-      },
-    ]);
-
-    if (insertError) throw insertError;
-
-    alert('✅ Successfully processed and uploaded to Supabase!');
-  } catch (error) {
-    console.error('❌ Error in process:', error);
-    alert(`Upload failed: ${error.message}`);
-  } finally {
-    setIsLoading(false);
-  }
+  onSubmit(formData);
 };
 
 

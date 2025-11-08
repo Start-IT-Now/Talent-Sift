@@ -220,7 +220,7 @@ console.log("🧩 agentPayload content:", agentPayload);
 const response = await fetch("https://agentic-ai.co.in/api/agentic-ai/workflow-exe", {
   method: "POST",
   headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({ data: agentPayload }), // ✅ correct wrapping
+  body: JSON.stringify(agentPayload), // ✅ correct wrapping
 });
 
 

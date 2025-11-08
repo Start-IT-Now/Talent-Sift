@@ -159,37 +159,40 @@ const handleNewSubmit = async (data) => {
 
   try {
     // ---- Upload resumes to Supabase ----
-    const uploadedResumeUrls = [];
+ const uploadedResumeUrls = [];
 
-    for (const file of data.resumeFiles) {
-      if (!(file instanceof File)) continue;
+for (const file of data.resumeFiles) {
+  if (!(file instanceof File)) continue;
 
-      const fileName = `${Date.now()}_${file.name}`;
+  const fileName = `${Date.now()}_${file.name}`;
 
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from("Talent Sift")
-        .upload(fileName, file, { cacheControl: "3600", upsert: true });
+  const { data: uploadData, error: uploadError } = await supabase.storage
+    .from("Talent Sift")
+    .upload(fileName, file, { cacheControl: "3600", upsert: true });
 
-      if (uploadError) {
-        console.error("Supabase upload error:", uploadError);
-        toast({
-          title: "Upload Failed",
-          description: `Failed to upload ${file.name} to storage.`,
-          variant: "destructive",
-        });
-        return;
-      }
+  if (uploadError) {
+    console.error("Supabase upload error:", uploadError);
+    toast({ title: "Upload Failed", description: `Failed to upload ${file.name}.`, variant: "destructive" });
+    return;
+  }
 
-      // public URL (if bucket is public). If private, replace with createSignedUrl(...)
-      const { publicUrl } = supabase
-        .storage
-        .from("Talent Sift")
-        .getPublicUrl(uploadData.path);
+  // Public bucket:
+  const { data: pub, error: pubErr } = supabase
+    .storage
+    .from("Talent Sift")
+    .getPublicUrl(uploadData.path);
 
-      uploadedResumeUrls.push(publicUrl);
-    }
+  if (pubErr) {
+    console.error("Public URL error:", pubErr);
+    return;
+  }
+  uploadedResumeUrls.push(pub.publicUrl);
 
-    console.log("Uploaded resumes:", uploadedResumeUrls);
+  // For private bucket, instead:
+  // const { data: signed } = await supabase.storage.from("Talent Sift").createSignedUrl(uploadData.path, 3600);
+  // uploadedResumeUrls.push(signed.signedUrl);
+}
+
 
     // ---- Prepare and call workflow API ----
     const plainJD = stripHtml(data.jobDescription); // reuse your helper

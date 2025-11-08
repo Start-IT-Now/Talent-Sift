@@ -211,44 +211,61 @@ const handleNewSubmit = async (data) => {
     };
 
     // after you build `uploadedResumeUrls` and `plainJD`
-const plainJD = stripHtml(data.jobDescription);
+ try {
+      const form = new FormData();
 
-// ensure org_id is a number
+      const stripHtml = (html) => {
+        const div = document.createElement("div");
+        div.innerHTML = html;
+        return div.textContent || "";
+      };
+
 const dynamicOrgId =
-  Number(data.requestor || orgId || localStorage.getItem("requestor") || 1);
+  data.requestor || orgId || localStorage.getItem("requestor") || 2; // fallback to 2 if missing
 
-const payload = {
-  org_id: dynamicOrgId,                 // number
-  exe_name: data.requiredSkills || "no skills",
+const jobPayload = {
+  org_id: dynamicOrgId, // ✅ requestor used as org_id
+  exe_name: data.requiredSkills || "run 1",
   workflow_id: "resume_ranker",
-  data: {                               // <-- REQUIRED by server
-    job_description: plainJD,
-    resumes: uploadedResumeUrls,        // <-- pass URLs here
-    yearsOfExperience: data.yearsOfExperience,
-    jobtype: data.jobtype,
-    industry: data.industry,
-    client: data.client,
-    jobTitle: data.jobTitle,
-    email: data.email,
-    owner: data.owner,
-    requestor: data.requestor,
-  }
+  job_description: stripHtml(data.jobDescription),
 };
 
-console.log("🚀 Sending payload:", payload);
 
-const response = await fetch("https://agentic-ai.co.in/api/agentic-ai/workflow-exe", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify(payload),
-});
+      console.log("Sending payload:", jobPayload);
+      console.log("🧠 Using org_id (requestor):", dynamicOrgId);
 
-const result = await response.json().catch(() => ({}));
-if (!response.ok) {
-  console.error("Workflow error", response.status, result);
-  throw new Error(result?.message || `Upload failed with status ${response.status}`);
-}
 
+      form.append("data", JSON.stringify(jobPayload));
+
+      data.resumeFiles.forEach((file) => {
+        if (file instanceof File) {
+      form.append("resumes", file);
+        }
+      });
+
+      const response = await fetch("https://agentic-ai.co.in/api/agentic-ai/workflow-exe", {
+        method: "POST",
+        body: form,
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.message || `Upload failed with status ${response.status}`);
+      }
+
+      console.log("✅ Response data:", result.data);
+
+      if (result.data?.id) {
+        setOrgId(result.data.id); // ✅ Store in state
+        localStorage.setItem("caseId", result.data.id); // ✅ Persist across sessions
+      }
+
+      localStorage.setItem("resumeResults", JSON.stringify(result.data));
+    } catch (error) {
+      console.error("Form submission error:", error);
+      throw error;
+    }
     // ✅ 4. Log to Google Sheet
     try {
       await fetch("/api/logToGoogleSheet", {

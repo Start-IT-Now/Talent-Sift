@@ -102,18 +102,17 @@ function App() {
 }, []);
 
  // ✅ New Submission (Fixed)
-// ✅ New Submission (Fixed)
 const handleNewSubmit = async (data) => {
-  console.log("Form submission data:", data);
+  console.log("Form submission:", data);
 
-  // cache some fields
+  // Local caching for re-use
   localStorage.setItem("industry", data.industry);
   localStorage.setItem("client", data.client);
   localStorage.setItem("owner", data.owner);
   localStorage.setItem("requestor", data.requestor);
   localStorage.setItem("success", JSON.stringify(data));
 
-  // basic required checks
+  // Basic validation
   if (
     !data.jobTitle ||
     !data.jobtype ||
@@ -141,7 +140,7 @@ const handleNewSubmit = async (data) => {
     return;
   }
 
-  // validate user email
+  // ✅ Validate user email
   const validateRes = await fetch("/api/validateuser", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -158,81 +157,98 @@ const handleNewSubmit = async (data) => {
   }
 
   try {
-    // ---- Upload resumes to Supabase ----
- const uploadedResumeUrls = [];
+    // ✅ 1. Upload resumes to Supabase first
+    const uploadedResumeUrls = [];
 
-for (const file of data.resumeFiles) {
-  if (!(file instanceof File)) continue;
+    for (const file of data.resumeFiles) {
+      if (!(file instanceof File)) continue;
 
-  const fileName = `${Date.now()}_${file.name}`;
+      const fileName = `${Date.now()}_${file.name}`;
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from("Talent Sift")
+        .upload(fileName, file, { cacheControl: "3600", upsert: true });
 
-  const { data: uploadData, error: uploadError } = await supabase.storage
-    .from("Talent Sift")
-    .upload(fileName, file, { cacheControl: "3600", upsert: true });
+      if (uploadError) {
+        console.error("Supabase upload error:", uploadError);
+        toast({
+          title: "Upload Failed",
+          description: `Failed to upload ${file.name}.`,
+          variant: "destructive",
+        });
+        return;
+      }
 
-  if (uploadError) {
-    console.error("Supabase upload error:", uploadError);
-    toast({ title: "Upload Failed", description: `Failed to upload ${file.name}.`, variant: "destructive" });
-    return;
-  }
+      // ✅ Get public URL
+      const { data: pub, error: pubErr } = supabase
+        .storage
+        .from("Talent Sift")
+        .getPublicUrl(uploadData.path);
 
-  // Public bucket:
-  const { data: pub, error: pubErr } = supabase
-    .storage
-    .from("Talent Sift")
-    .getPublicUrl(uploadData.path);
+      if (pubErr) {
+        console.error("Public URL error:", pubErr);
+        continue;
+      }
 
-  if (pubErr) {
-    console.error("Public URL error:", pubErr);
-    return;
-  }
-  uploadedResumeUrls.push(pub.publicUrl);
+      uploadedResumeUrls.push(pub.publicUrl);
+    }
 
-  // For private bucket, instead:
-  // const { data: signed } = await supabase.storage.from("Talent Sift").createSignedUrl(uploadData.path, 3600);
-  // uploadedResumeUrls.push(signed.signedUrl);
-}
+    console.log("Uploaded resumes:", uploadedResumeUrls);
 
-
-    // ---- Prepare and call workflow API ----
-    const plainJD = stripHtml(data.jobDescription); // reuse your helper
-
-    const payload = {
-      org_id: orgId,
-      exe_name: data.requiredSkills,       // or whatever your API expects here
-      workflow_id: "resume_ranker",
-      data: {
-        job_description: plainJD,
-        resumes: uploadedResumeUrls,       // ✅ correct array
-        yearsOfExperience: data.yearsOfExperience,
-        jobtype: data.jobtype,
-        industry: data.industry,
-        client: data.client,
-        jobTitle: data.jobTitle,
-        email: data.email,
-        owner: data.owner,
-        requestor: data.requestor,
-      },
-    };
-
-    const r = await fetch("https://agentic-ai.co.in/api/agentic-ai/workflow-exe", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-
-    if (!r.ok) {
-      const err = await r.json().catch(() => ({}));
-      console.error("Workflow error", r.status, err);
+    if (!uploadedResumeUrls.length) {
       toast({
-        title: "Processing Failed",
-        description: `Workflow API error ${r.status}: ${err?.detail ? JSON.stringify(err.detail) : "See console"}`,
+        title: "Upload Failed",
+        description: "Could not upload resumes. Please try again.",
         variant: "destructive",
       });
       return;
     }
 
-    // ---- Log to Google Sheet (best-effort) ----
+    // ✅ 2. Prepare job payload (new format — no 'data' wrapper)
+    const stripHtml = (html) => {
+      const div = document.createElement("div");
+      div.innerHTML = html;
+      return div.textContent || "";
+    };
+
+    const dynamicOrgId =
+      data.requestor || orgId || localStorage.getItem("requestor") || 1;
+
+    const jobPayload = {
+      org_id: parseInt(dynamicOrgId),
+      exe_name: data.jobTitle || "Untitled Job",
+      workflow_id: "resume_ranker",
+      job_description:
+        stripHtml(data.jobDescription) +
+        "\n\nResumes:\n" +
+        uploadedResumeUrls.join("\n"),
+    };
+
+    console.log("🚀 Sending payload:", jobPayload);
+
+    // ✅ 3. Send payload to workflow API
+    const response = await fetch("https://agentic-ai.co.in/api/agentic-ai/workflow-exe", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(jobPayload),
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      console.error("Workflow error", response.status, result);
+      throw new Error(result.message || `Upload failed with status ${response.status}`);
+    }
+
+    console.log("✅ Workflow Response:", result);
+
+    if (result.data?.id) {
+      setOrgId(result.data.id);
+      localStorage.setItem("caseId", result.data.id);
+    }
+
+    localStorage.setItem("resumeResults", JSON.stringify(result.data));
+
+    // ✅ 4. Log to Google Sheet
     try {
       await fetch("/api/logToGoogleSheet", {
         method: "POST",
@@ -240,18 +256,20 @@ for (const file of data.resumeFiles) {
         body: JSON.stringify({
           email: data.email,
           resumeCount: data.resumeFiles.length,
-          caseId: orgId || "N/A",
+          caseId: result.data?.id || "N/A",
         }),
       });
     } catch (sheetError) {
-      console.warn("⚠️ Failed to log to Google Sheets:", sheetError);
+      console.warn("⚠️ Google Sheet log failed:", sheetError);
     }
 
+    // ✅ 5. Notify success
     toast({
       title: "Success!",
       description: "✅ Resumes processed successfully.",
     });
 
+    // ✅ 6. Redirect
     const params = new URLSearchParams({
       client: data.client || "",
       industry: data.industry || "",
@@ -264,8 +282,8 @@ for (const file of data.resumeFiles) {
   } catch (error) {
     console.error("❌ Upload/Process failed:", error);
     toast({
-      title: "Failed",
-      description: error?.message || "❌ Something went wrong.",
+      title: "Upload Failed",
+      description: error.message || "❌ Something went wrong.",
       variant: "destructive",
     });
   }

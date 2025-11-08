@@ -102,16 +102,28 @@ function App() {
 }, []);
 
  // ✅ New Submission (Fixed)
+// ✅ New Submission (Fixed)
 const handleNewSubmit = async (data) => {
   console.log("Form submission data:", data);
 
+  // cache some fields
   localStorage.setItem("industry", data.industry);
   localStorage.setItem("client", data.client);
   localStorage.setItem("owner", data.owner);
   localStorage.setItem("requestor", data.requestor);
   localStorage.setItem("success", JSON.stringify(data));
 
-  if (!data.jobTitle || !data.jobtype || !data.jobDescription || !data.email || !data.client || !data.industry || !data.owner || !data.requestor) {
+  // basic required checks
+  if (
+    !data.jobTitle ||
+    !data.jobtype ||
+    !data.jobDescription ||
+    !data.email ||
+    !data.client ||
+    !data.industry ||
+    !data.owner ||
+    !data.requestor
+  ) {
     toast({
       title: "Missing Information",
       description: "Please fill in all required fields before submitting.",
@@ -129,7 +141,7 @@ const handleNewSubmit = async (data) => {
     return;
   }
 
-  // ✅ Validate user email
+  // validate user email
   const validateRes = await fetch("/api/validateuser", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -146,12 +158,14 @@ const handleNewSubmit = async (data) => {
   }
 
   try {
-    // ✅ Upload resumes to Supabase first
+    // ---- Upload resumes to Supabase ----
     const uploadedResumeUrls = [];
+
     for (const file of data.resumeFiles) {
       if (!(file instanceof File)) continue;
 
       const fileName = `${Date.now()}_${file.name}`;
+
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from("Talent Sift")
         .upload(fileName, file, { cacheControl: "3600", upsert: true });
@@ -166,7 +180,7 @@ const handleNewSubmit = async (data) => {
         return;
       }
 
-      // ✅ Construct public URL
+      // public URL (if bucket is public). If private, replace with createSignedUrl(...)
       const { publicUrl } = supabase
         .storage
         .from("Talent Sift")
@@ -177,45 +191,45 @@ const handleNewSubmit = async (data) => {
 
     console.log("Uploaded resumes:", uploadedResumeUrls);
 
-    // ✅ Prepare job payload
-    const stripHtml = (html) => {
-      const div = document.createElement("div");
-      div.innerHTML = html;
-      return div.textContent || "";
-    };
+    // ---- Prepare and call workflow API ----
+    const plainJD = stripHtml(data.jobDescription); // reuse your helper
 
-    const dynamicOrgId = data.requestor || orgId || localStorage.getItem("requestor") || 2;
-
-    const jobPayload = {
-      org_id: dynamicOrgId,
-      exe_name: data.requiredSkills || "run 1",
+    const payload = {
+      org_id: orgId,
+      exe_name: data.requiredSkills,       // or whatever your API expects here
       workflow_id: "resume_ranker",
-      job_description: stripHtml(data.jobDescription),
-      resumes: uploadedResumeUrls, // Send URLs instead of raw files
+      data: {
+        job_description: plainJD,
+        resumes: uploadedResumeUrls,       // ✅ correct array
+        yearsOfExperience: data.yearsOfExperience,
+        jobtype: data.jobtype,
+        industry: data.industry,
+        client: data.client,
+        jobTitle: data.jobTitle,
+        email: data.email,
+        owner: data.owner,
+        requestor: data.requestor,
+      },
     };
 
-    console.log("Sending payload:", jobPayload);
-
-    const response = await fetch("https://agentic-ai.co.in/api/agentic-ai/workflow-exe", {
+    const r = await fetch("https://agentic-ai.co.in/api/agentic-ai/workflow-exe", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ data: jobPayload }),
+      body: JSON.stringify(payload),
     });
 
-    const result = await response.json();
-
-    if (!response.ok) throw new Error(result.message || `Upload failed with status ${response.status}`);
-
-    console.log("✅ Response data:", result.data);
-
-    if (result.data?.id) {
-      setOrgId(result.data.id);
-      localStorage.setItem("caseId", result.data.id);
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({}));
+      console.error("Workflow error", r.status, err);
+      toast({
+        title: "Processing Failed",
+        description: `Workflow API error ${r.status}: ${err?.detail ? JSON.stringify(err.detail) : "See console"}`,
+        variant: "destructive",
+      });
+      return;
     }
 
-    localStorage.setItem("resumeResults", JSON.stringify(result.data));
-
-    // ✅ Log to Google Sheet
+    // ---- Log to Google Sheet (best-effort) ----
     try {
       await fetch("/api/logToGoogleSheet", {
         method: "POST",
@@ -223,7 +237,7 @@ const handleNewSubmit = async (data) => {
         body: JSON.stringify({
           email: data.email,
           resumeCount: data.resumeFiles.length,
-          caseId: result.data?.id || "N/A",
+          caseId: orgId || "N/A",
         }),
       });
     } catch (sheetError) {
@@ -244,16 +258,16 @@ const handleNewSubmit = async (data) => {
     }).toString();
 
     navigate(`/resumes?${params}`);
-
   } catch (error) {
-    console.error("❌ Upload failed:", error);
+    console.error("❌ Upload/Process failed:", error);
     toast({
-      title: "Upload Failed",
-      description: error.message || "❌ Something went wrong.",
+      title: "Failed",
+      description: error?.message || "❌ Something went wrong.",
       variant: "destructive",
     });
   }
 };
+
   // ✅ Existing Flow
   const handleExistingSubmit = () => {
     setSubmittedExisting(true);

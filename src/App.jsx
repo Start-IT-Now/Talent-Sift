@@ -205,14 +205,14 @@ const handleNewSubmit = async (data) => {
     // ✅ FIXED: Send correct body to Agentic AI API (no nested `data`)
  console.log("🚀 Preparing job submission...");
 const agentPayload = {
-  jobTitle: jobDetails?.title,
-  jobDescription: jobDetails?.job,
-  keySkills: jobDetails?.skills,
-  yearsOfExperience: jobDetails?.yoe,
-  jobType: jobDetails?.jobtype,
-  industry: jobDetails?.industry,
-  client: jobDetails?.client,
-  resumes: uploadedResumes,
+  jobTitle: data?.title,
+  jobDescription: data?.job,
+  keySkills: data?.skills,
+  yearsOfExperience: data?.yoe,
+  jobType: data?.jobtype,
+  industry: data?.industry,
+  client: data?.client,
+  resumes: uploadedResumeUrls,
 };
 
 console.log("🧩 agentPayload content:", agentPayload);

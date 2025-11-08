@@ -204,14 +204,14 @@ const handleNewSubmit = async (data) => {
 
     // ✅ FIXED: Send correct body to Agentic AI API (no nested `data`)
 const agentPayload = {
-  org_id: orgId || jobDetails?.requestor || "default_org_id",
-  exe_name: jobDetails?.skills || "resume_ranker",
+  org_id: orgId || data?.requestor || "default_org_id",
+  exe_name: data?.skills || "resume_ranker",
   workflow_id: "resume_ranker",
-  job_description: jobDetails?.job || "",
-  client: jobDetails?.client || "",
-  industry: jobDetails?.industry || "",
-  jobtype: jobDetails?.jobtype || "",
-  years_of_experience: jobDetails?.yoe || "",
+  job_description: data?.job || "",
+  client: data?.client || "",
+  industry: data?.industry || "",
+  jobtype: data?.jobtype || "",
+  years_of_experience: data?.yoe || "",
   resumes: uploadedResumeUrls || [],
 };
 

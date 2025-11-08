@@ -266,7 +266,40 @@ const jobPayload = {
       console.error("Form submission error:", error);
       throw error;
     }
-    // ✅ 4. Log to Google Sheet
+
+     // ✅ 4. Save AI results to Supabase
+    try {
+      const candidates = result.data?.result || [];
+      const insertData = candidates.map((c) => ({
+        org_id: dynamicOrgId,
+        exe_name: result.data?.exe_name || data.jobTitle,
+        candidate_id: c.candidateId,
+        name: c.name,
+        email: c.email,
+        phone: c.phone,
+        experience: c.experience,
+        rank: c.Rank,
+        justification: c.justification,
+      }));
+
+      if (insertData.length > 0) {
+        const { data: inserted, error: insertErr } = await supabase
+          .from("resume_results")
+          .insert(insertData);
+
+        if (insertErr) {
+          console.error("❌ Supabase insert error:", insertErr);
+        } else {
+          console.log("✅ Stored results in Supabase:", inserted);
+        }
+      } else {
+        console.warn("⚠️ No candidates found to store.");
+      }
+    } catch (dbErr) {
+      console.error("⚠️ Failed to save to Supabase:", dbErr);
+    }
+
+    // ✅ 5. Log to Google Sheet
     try {
       await fetch("/api/logToGoogleSheet", {
         method: "POST",
@@ -281,13 +314,13 @@ const jobPayload = {
       console.warn("⚠️ Google Sheet log failed:", sheetError);
     }
 
-    // ✅ 5. Notify success
+    // ✅ 6. Notify success
     toast({
       title: "Success!",
       description: "✅ Resumes processed successfully.",
     });
 
-    // ✅ 6. Redirect
+    // ✅ 7. Redirect
     const params = new URLSearchParams({
       client: data.client || "",
       industry: data.industry || "",

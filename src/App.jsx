@@ -101,29 +101,6 @@ function App() {
   }
 }, []);
 
-// //  Upload resume file to Supabase Storage and get its public URL
-// const uploadResumeToSupabase = async (file) => {
-//   if (!file) return null;
-//   const fileName = `${Date.now()}_${file.name}`;
-
-//   const { data, error } = await supabase.storage
-//     .from("Talent Sift") // Your bucket name
-//     .upload(fileName, file);
-
-//   if (error) {
-//     console.error("❌ Resume upload failed:", error.message);
-//     return null;
-//   }
-
-//   const { data: publicData } = supabase.storage
-//     .from("Talent Sift")
-//     .getPublicUrl(fileName);
-
-//   return publicData.publicUrl;
-// };
-
-
-  //  New Submission
  // ✅ New Submission (Fixed)
 const handleNewSubmit = async (data) => {
   console.log("🚀 Starting new job submission:", data);
@@ -204,16 +181,18 @@ const handleNewSubmit = async (data) => {
 
     // ✅ FIXED: Send correct body to Agentic AI API (no nested `data`)
 const agentPayload = {
-  org_id: orgId || data?.requestor || "default_org_id",
-  exe_name: data?.skills || "resume_ranker",
+  org_id: orgId || data.requestor || "default_org_id",
+  exe_name: "resume_ranker", 
   workflow_id: "resume_ranker",
-  job_description: data?.job || "",
-  client: data?.client || "",
-  industry: data?.industry || "",
-  jobtype: data?.jobtype || "",
-  years_of_experience: data?.yoe || "",
+  job_description: stripHtml(data.jobDescription) || "",
+  client: data.client || "",
+  industry: data.industry || "",
+  jobtype: data.jobtype || "",
+  years_of_experience: data.yearsOfExperience || "",
   resumes: uploadedResumeUrls || [],
+  required_skills: data.requiredSkills || "",
 };
+
 
 console.log("🧩 agentPayload content:", agentPayload);
 

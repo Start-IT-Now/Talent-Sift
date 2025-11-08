@@ -220,7 +220,7 @@ const handleNewSubmit = async (data) => {
     const response = await fetch("https://agentic-ai.co.in/api/agentic-ai/workflow-exe", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(agentPayload),
+      body: JSON.stringify({data: agentPayload}),
     });
 
     const result = await response.json();

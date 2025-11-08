@@ -204,24 +204,25 @@ const handleNewSubmit = async (data) => {
 
     // ✅ FIXED: Send correct body to Agentic AI API (no nested `data`)
 const agentPayload = {
-  jobTitle: data?.jobTitle,
-  jobDescription: data?.jobDescription,
-  keySkills: data?.requiredSkills,
-  yearsOfExperience: data?.yearsOfExperience,
-  jobType: data?.jobtype,
-  industry: data?.industry,
-  client: data?.client,
-  resumes: uploadedResumeUrls,
+  org_id: orgId || jobDetails?.requestor || "default_org_id",
+  exe_name: jobDetails?.skills || "resume_ranker",
+  workflow_id: "resume_ranker",
+  job_description: jobDetails?.job || "",
+  client: jobDetails?.client || "",
+  industry: jobDetails?.industry || "",
+  jobtype: jobDetails?.jobtype || "",
+  years_of_experience: jobDetails?.yoe || "",
+  resumes: uploadedResumeUrls || [],
 };
-
 
 console.log("🧩 agentPayload content:", agentPayload);
 
 const response = await fetch("https://agentic-ai.co.in/api/agentic-ai/workflow-exe", {
   method: "POST",
   headers: { "Content-Type": "application/json" },
-  body: JSON.stringify(agentPayload), // ✅ correct wrapping
+  body: JSON.stringify({ data: agentPayload }), // ✅ `data` wrapper still required
 });
+
 
 
     const result = await response.json();

@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { Toaster } from "@/components/ui/toaster";
 import { useToast } from "@/components/ui/use-toast";
-//import { supabase } from "@/lib/supabaseClient";
+import { supabase } from "@/lib/supabaseClient";
 import Footer from "@/components/Footer";
 import JobFormStep1 from "@/components/JobFormStep1";
 import ResumeList from "@/components/existing";

@@ -100,7 +100,7 @@ const validate = () => {
   return Object.keys(newErrors).length === 0;
 };
 
-const handleSubmit = async (e) => {
+const handleNewSubmit = async (e) => {
   e.preventDefault();
   if (!validate()) return;
   await onNewSubmit(formData);
@@ -209,13 +209,9 @@ const handleSubmit = async (e) => {
 
               {/* New Case Form */}
               {mode === 'new' && (
-              <form
-                onSubmit={(e) => {
-                e.preventDefault();
-                onSubmit();
-         }}
-  >
-                  {/* Job Title & Experience */}
+            <form onSubmit={handleNewSubmit}>
+              
+                {/* Job Title & Experience */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">
                       <Label className="flex items-center gap-2">                   

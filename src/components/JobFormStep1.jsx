@@ -111,13 +111,16 @@ const onSubmit = async () => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        workflow_id: 'your_workflow_id_here',
-        input_data: {
-          jobTitle: formData.jobTitle,
-          jobDescription: formData.jobDescription,
-          keySkills: formData.requiredSkills,
-          yearsOfExperience: formData.yearsOfExperience,
-          email: formData.email,
+        data: {
+          workflow_id: 'resume_ranker',
+          input_data: {
+            source: 'web',
+            jobTitle: formData.jobTitle,
+            jobDescription: formData.jobDescription,
+            keySkills: formData.requiredSkills,
+            yearsOfExperience: formData.yearsOfExperience,
+            email: formData.email,
+          },
         },
       }),
     });
@@ -150,25 +153,25 @@ const onSubmit = async () => {
     }
 
     // Step 3️⃣: Store results + metadata in Supabase table
-   const { error: insertError } = await supabase.from('applicants').insert([
-  {
-    name: formData.jobTitle,
-    email: formData.email,
-    phone: formData.phone || null,
-    skills: formData.requiredSkills,
-    job_title: formData.jobTitle,
-    job_description: formData.jobDescription,
-    years_of_experience: formData.yearsOfExperience,
-    industry: formData.industry,
-    owner: formData.owner || 'Default Owner',
-    client: formData.client || 'Default Client',
-    requestor: formData.requestor || 'Default Requestor',
-    job_type: formData.jobtype,
-    resume_url: uploadedUrls, // keep as array if using jsonb
-    score: agentResult?.output?.score || '0',
-    agent_output: agentResult?.output || {},
-  },
-]);
+    const { error: insertError } = await supabase.from('applicants').insert([
+      {
+        name: formData.jobTitle,
+        email: formData.email,
+        phone: formData.phone || null,
+        skills: formData.requiredSkills,
+        job_title: formData.jobTitle,
+        job_description: formData.jobDescription,
+        years_of_experience: formData.yearsOfExperience,
+        industry: formData.industry,
+        owner: formData.owner || 'Default Owner',
+        client: formData.client || 'Default Client',
+        requestor: formData.requestor || 'Default Requestor',
+        job_type: formData.jobtype,
+        resume_url: uploadedUrls, // keep as array if using jsonb
+        score: agentResult?.output?.score || '0',
+        agent_output: agentResult?.output || {},
+      },
+    ]);
 
     if (insertError) throw insertError;
 

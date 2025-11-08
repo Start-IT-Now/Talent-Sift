@@ -124,183 +124,215 @@ function App() {
 
 
   //  New Submission
-  const handleNewSubmit = async (data) => {
-console.log("success" + JSON.stringify(data));
-    localStorage.setItem("industry", data.industry);
-    localStorage.setItem("client", data.client);
-    localStorage.setItem("owner", data.owner);
-    localStorage.setItem("requestor", data.requestor);
-    localStorage.setItem("succees",JSON.stringify(data));
+ const handleNewSubmit = async (data) => {
+  console.log("🚀 Starting new job submission:", data);
 
-    if (!data.jobTitle || !data.jobtype || !data.jobDescription || !data.email || !data.client || !data.industry || !data.owner || !data.requestor) {
-      toast({
-        title: "Missing Information",
-        description: "Please fill in all required fields before submitting.",
-        variant: "destructive",
-      });
-      return;
-    }
+  // Save contextual info
+  localStorage.setItem("industry", data.industry);
+  localStorage.setItem("client", data.client);
+  localStorage.setItem("owner", data.owner);
+  localStorage.setItem("requestor", data.requestor);
 
-    if (!data.resumeFiles?.length) {
-      toast({
-        title: "Missing Resume",
-        description: "Please upload at least one resume before submitting.",
-        variant: "destructive",
-      });
-      return;
-    }
+  const { toast } = useToast();
 
+  // --- ✅ Validation ---
+  if (
+    !data.jobTitle ||
+    !data.jobtype ||
+    !data.jobDescription ||
+    !data.email ||
+    !data.client ||
+    !data.industry ||
+    !data.owner ||
+    !data.requestor
+  ) {
+    toast({
+      title: "Missing Information",
+      description: "Please fill in all required fields before submitting.",
+      variant: "destructive",
+    });
+    return;
+  }
 
-const validateRes = await fetch("/api/validateuser", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({ email: data.email }),
-});
+  if (!data.resumeFiles?.length) {
+    toast({
+      title: "Missing Resume",
+      description: "Please upload at least one resume before submitting.",
+      variant: "destructive",
+    });
+    return;
+  }
 
-const validateData = await validateRes.json();
-
-if (validateRes.status !== 200 || validateData.status !== "success") {
-  toast({
-    title: "Unauthorized",
-    description: validateData.message || "Unauthorized company domain",
-    variant: "destructive",
+  // --- ✅ Domain validation (company check) ---
+  const validateRes = await fetch("/api/validateuser", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email: data.email }),
   });
-  return;
-}
 
+  const validateData = await validateRes.json();
+  if (validateRes.status !== 200 || validateData.status !== "success") {
+    toast({
+      title: "Unauthorized",
+      description: validateData.message || "Unauthorized company domain",
+      variant: "destructive",
+    });
+    return;
+  }
 
+  try {
+    // --- ✅ Upload resumes to Supabase Storage ---
+    const uploadedResumeUrls = [];
+    for (const file of data.resumeFiles) {
+      const fileName = `${Date.now()}_${file.name}`;
+      const { error: uploadErr } = await supabase.storage
+        .from("Talent Sift")
+        .upload(fileName, file);
 
-    try {
-      const form = new FormData();
+      if (uploadErr) {
+        console.error("❌ Upload failed:", uploadErr.message);
+        continue;
+      }
 
-      const stripHtml = (html) => {
-        const div = document.createElement("div");
-        div.innerHTML = html;
-        return div.textContent || "";
-      };
+      const { data: publicData } = supabase.storage
+        .from("Talent Sift")
+        .getPublicUrl(fileName);
 
-const dynamicOrgId =
-  data.requestor || orgId || localStorage.getItem("requestor") || 2; // fallback to 2 if missing
+      if (publicData?.publicUrl) uploadedResumeUrls.push(publicData.publicUrl);
+    }
 
-const jobPayload = {
-  org_id: dynamicOrgId, // ✅ requestor used as org_id
-  exe_name: data.requiredSkills || "run 1",
-  workflow_id: "resume_ranker",
-  job_description: stripHtml(data.jobDescription),
+    console.log("✅ Uploaded resumes:", uploadedResumeUrls);
+
+    // --- ✅ Call Agentic AI API ---
+    const agentPayload = {
+      data: {
+        source: "web",
+        title: data.jobTitle,
+        job: stripHtml(data.jobDescription),
+        skills: data.requiredSkills,
+        jobtype: data.jobtype,
+        yoe: data.yearsOfExperience,
+        industry: data.industry,
+        mail: data.email,
+        client: data.client,
+        owner: data.owner,
+        requestor: data.requestor,
+      },
+    };
+
+    console.log("📡 Sending to Agentic AI:", agentPayload);
+
+    const response = await fetch("https://agentic-ai.co.in/api/agentic-ai/workflow-exe", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(agentPayload),
+    });
+
+    const result = await response.json();
+    if (!response.ok) {
+      throw new Error(result.message || `Agentic AI error: ${response.status}`);
+    }
+
+    console.log("✅ Agentic AI result:", result);
+
+    // --- ✅ Store full data in Supabase applicants table ---
+    const { error: dbError } = await supabase.from("applicants").insert([
+      {
+        name: data.owner || "Unknown Owner",
+        email: data.email,
+        phone: null,
+        skills: data.requiredSkills,
+        score: "0",
+        job_title: data.jobTitle,
+        job_description: stripHtml(data.jobDescription),
+        years_of_experience: data.yearsOfExperience,
+        industry: data.industry,
+        owner: data.owner,
+        client: data.client,
+        requestor: data.requestor,
+        job_type: data.jobtype,
+        resume_url:
+          uploadedResumeUrls.length > 1
+            ? JSON.stringify(uploadedResumeUrls)
+            : uploadedResumeUrls[0] || null,
+        agent_output: result.data || {},
+      },
+    ]);
+
+    if (dbError) {
+      console.error("⚠️ Failed to save to Supabase:", dbError.message);
+    } else {
+      console.log("✅ Saved applicant record to Supabase.");
+    }
+
+    // --- ✅ Store and redirect ---
+    localStorage.setItem("resumeResults", JSON.stringify(result.data || []));
+    toast({
+      title: "Success!",
+      description: "✅ Resumes processed successfully.",
+    });
+
+    const params = new URLSearchParams({
+      client: data.client || "",
+      industry: data.industry || "",
+      requestor: data.requestor || "",
+      owner: data.owner || "",
+      skills: data.requiredSkills || "",
+    }).toString();
+
+    navigate(`/resumes?${params}`);
+  } catch (error) {
+    console.error("❌ Submission failed:", error);
+    toast({
+      title: "Error",
+      description: error.message || "Something went wrong.",
+      variant: "destructive",
+    });
+  }
 };
 
 
-      console.log("Sending payload:", jobPayload);
-      console.log(" Using org_id (requestor):", dynamicOrgId);
 
-
-      form.append("data", JSON.stringify(jobPayload));
-
-      data.resumeFiles.forEach((file) => {
-        if (file instanceof File) {
-          form.append("resumes", file);
-        }
-      });
-
-      const response = await fetch("https://agentic-ai.co.in/api/agentic-ai/workflow-exe", {
-        method: "POST",
-        body: form,
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.message || `Upload failed with status ${response.status}`);
-      }
-
-      console.log("✅ Response data:", result.data);
-
-// // Upload resumes to Supabase and store URLs
-// const uploadedResumeUrls = [];
-// for (const file of data.resumeFiles) {
-//   const url = await uploadResumeToSupabase(file);
-//   if (url) uploadedResumeUrls.push(url);
-// }
-
-// // Save submission in Supabase DB
-// try {
-//   const { data: saved, error: dbError } = await supabase.from("applicants").insert([
-//     {
-//       name: data.owner || "Unknown Owner",
-//       email: data.email,
-//       phone: null,
-//       skills: data.requiredSkills,
-//       score: "0",
-//       job_title: data.jobTitle,
-//       job_description: stripHtml(data.jobDescription),
-//       years_of_experience: data.yearsOfExperience,
-//       industry: data.industry,
-//       owner: data.owner,
-//       client: data.client,
-//       requestor: data.requestor,
-//       job_type: data.jobtype,
-//       resume_url: uploadedResumeUrls.length > 1 
-//         ? JSON.stringify(uploadedResumeUrls)  // store all as JSON if multiple
-//         : uploadedResumeUrls[0] || null,      // single resume case
-//     },
-//   ]);
-
-//   if (dbError) {
-//     console.error("⚠️ Failed to save to Supabase:", dbError.message);
-//   } else {
-//     console.log("✅ Saved to Supabase with resume URLs:", saved);
-//   }
-// } catch (dbCatchErr) {
-//   console.error("❌ DB error:", dbCatchErr);
-// }
-
-
-      if (result.data?.id) {
-        setOrgId(result.data.id); // ✅ Store in state
-        localStorage.setItem("caseId", result.data.id); // ✅ Persist across sessions
-      }
-
-      localStorage.setItem("resumeResults", JSON.stringify(result.data));
-    //  localStorage.setItem("resumeResults", JSON.stringify(result.data?.result || []));
-
+// Handle success case inside previous try block
+if (result.data?.id) {
+  setOrgId(result.data.id); // ✅ Store in state
+  localStorage.setItem("caseId", result.data.id); // ✅ Persist across sessions
+  localStorage.setItem("resumeResults", JSON.stringify(result.data));
+  
+  try {
+    (async () => {
       try {
-      await fetch("/api/logToGoogleSheet", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: data.email,
-          resumeCount: data.resumeFiles.length,
-          caseId: result.data?.id || "N/A",
-        }),
-      });
-    } catch (sheetError) {
-      console.warn("⚠️ Failed to log to Google Sheets:", sheetError);
-    }
+        await fetch("/api/logToGoogleSheet", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email: data.email,
+            resumeCount: data.resumeFiles.length,
+            caseId: result.data?.id || "N/A",
+          }),
+        });
+      } catch (error) {
+        console.warn("⚠️ Failed to log to Google Sheets:", error);
+      }
+    })();
+  } catch (sheetError) {
+    console.warn("⚠️ Failed to log to Google Sheets:", sheetError);
+  }
 
+  toast({
+    title: "Success!",
+    description: "✅ Resumes processed successfully.",
+  });
 
-      toast({
-        title: "Success!",
-        description: "✅ Resumes processed successfully.",
-      });
+  const params = new URLSearchParams({
+    client: data.client || "",
+    industry: data.industry || "",
+    requestor: data.requestor || "",
+    owner: data.owner || "",
+    skills: data.requiredSkills || "",
+  }).toString();
 
-const params = new URLSearchParams({
-  client: data.client || "",
-  industry: data.industry || "",
-  requestor: data.requestor || "",
-  owner: data.owner || "",
-  skills: data.requiredSkills || "",
-}).toString();
-
-navigate(`/resumes?${params}`);
-
-    } catch (error) {
-      console.error("❌ Upload failed:", error);
-      toast({
-        title: "Upload Failed",
-        description: error.message || "❌ Something went wrong.",
-        variant: "destructive",
-      });
-    }
+  navigate(`/resumes?${params}`);
   };
 
   // ✅ Existing Flow

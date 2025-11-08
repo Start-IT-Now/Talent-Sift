@@ -210,43 +210,44 @@ const handleNewSubmit = async (data) => {
       return div.textContent || "";
     };
 
-    const dynamicOrgId =
-      data.requestor || orgId || localStorage.getItem("requestor") || 1;
+    // after you build `uploadedResumeUrls` and `plainJD`
+const plainJD = stripHtml(data.jobDescription);
 
-    const jobPayload = {
-      org_id: parseInt(dynamicOrgId),
-      exe_name: data.jobTitle || "Untitled Job",
-      workflow_id: "resume_ranker",
-      job_description:
-        stripHtml(data.jobDescription) +
-        "\n\nResumes:\n" +
-        uploadedResumeUrls.join("\n"),
-    };
+// ensure org_id is a number
+const dynamicOrgId =
+  Number(data.requestor || orgId || localStorage.getItem("requestor") || 1);
 
-    console.log("🚀 Sending payload:", jobPayload);
+const payload = {
+  org_id: dynamicOrgId,                 // number
+  exe_name: data.requiredSkills || "no skills",
+  workflow_id: "resume_ranker",
+  data: {                               // <-- REQUIRED by server
+    job_description: plainJD,
+    resumes: uploadedResumeUrls,        // <-- pass URLs here
+    yearsOfExperience: data.yearsOfExperience,
+    jobtype: data.jobtype,
+    industry: data.industry,
+    client: data.client,
+    jobTitle: data.jobTitle,
+    email: data.email,
+    owner: data.owner,
+    requestor: data.requestor,
+  }
+};
 
-    // ✅ 3. Send payload to workflow API
-    const response = await fetch("https://agentic-ai.co.in/api/agentic-ai/workflow-exe", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(jobPayload),
-    });
+console.log("🚀 Sending payload:", payload);
 
-    const result = await response.json();
+const response = await fetch("https://agentic-ai.co.in/api/agentic-ai/workflow-exe", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify(payload),
+});
 
-    if (!response.ok) {
-      console.error("Workflow error", response.status, result);
-      throw new Error(result.message || `Upload failed with status ${response.status}`);
-    }
-
-    console.log("✅ Workflow Response:", result);
-
-    if (result.data?.id) {
-      setOrgId(result.data.id);
-      localStorage.setItem("caseId", result.data.id);
-    }
-
-    localStorage.setItem("resumeResults", JSON.stringify(result.data));
+const result = await response.json().catch(() => ({}));
+if (!response.ok) {
+  console.error("Workflow error", response.status, result);
+  throw new Error(result?.message || `Upload failed with status ${response.status}`);
+}
 
     // ✅ 4. Log to Google Sheet
     try {

@@ -100,11 +100,12 @@ const validate = () => {
   return Object.keys(newErrors).length === 0;
 };
 
-const onSubmit = async (e) => {
+const handleSubmit = async (e) => {
   e.preventDefault();
   if (!validate()) return;
-  onSubmit(formData);
+  await onNewSubmit(formData);
 };
+
 
 
   useEffect(() => {

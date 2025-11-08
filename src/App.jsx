@@ -124,14 +124,17 @@ function App() {
 
 
   //  New Submission
- const handleNewSubmit = async (data) => {
+ // ✅ New Submission (Fixed)
+const handleNewSubmit = async (data) => {
   console.log("🚀 Starting new job submission:", data);
 
+  // ✅ Save context for later
   localStorage.setItem("industry", data.industry);
   localStorage.setItem("client", data.client);
   localStorage.setItem("owner", data.owner);
   localStorage.setItem("requestor", data.requestor);
 
+  // ✅ Basic validations
   if (
     !data.jobTitle ||
     !data.jobtype ||
@@ -177,7 +180,7 @@ function App() {
   }
 
   try {
-    // ✅ Upload resumes to Supabase Storage
+    // ✅ Upload resumes to Supabase
     const uploadedResumeUrls = [];
     for (const file of data.resumeFiles) {
       const fileName = `${Date.now()}_${file.name}`;
@@ -199,21 +202,19 @@ function App() {
 
     console.log("✅ Uploaded resumes:", uploadedResumeUrls);
 
-    // ✅ Call Agentic AI API
+    // ✅ FIXED: Send correct body to Agentic AI API (no nested `data`)
     const agentPayload = {
-      data: {
-        source: "web",
-        title: data.jobTitle,
-        job: stripHtml(data.jobDescription),
-        skills: data.requiredSkills,
-        jobtype: data.jobtype,
-        yoe: data.yearsOfExperience,
-        industry: data.industry,
-        mail: data.email,
-        client: data.client,
-        owner: data.owner,
-        requestor: data.requestor,
-      },
+      source: "web",
+      title: data.jobTitle,
+      job: stripHtml(data.jobDescription),
+      skills: data.requiredSkills,
+      jobtype: data.jobtype,
+      yoe: data.yearsOfExperience,
+      industry: data.industry,
+      mail: data.email,
+      client: data.client,
+      owner: data.owner,
+      requestor: data.requestor,
     };
 
     const response = await fetch("https://agentic-ai.co.in/api/agentic-ai/workflow-exe", {
@@ -227,7 +228,7 @@ function App() {
 
     console.log("✅ Agentic AI result:", result);
 
-    // ✅ Save data in Supabase
+    // ✅ Save applicant info
     const { error: dbError } = await supabase.from("applicants").insert([
       {
         name: data.owner || "Unknown Owner",
@@ -252,7 +253,7 @@ function App() {
     if (dbError) console.error("⚠️ Failed to save to Supabase:", dbError.message);
     else console.log("✅ Saved applicant record to Supabase.");
 
-    // ✅ Handle success case HERE (inside try)
+    // ✅ Success Flow
     if (result.data?.id) {
       setOrgId(result.data.id);
       localStorage.setItem("caseId", result.data.id);

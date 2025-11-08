@@ -203,25 +203,26 @@ const handleNewSubmit = async (data) => {
     console.log("✅ Uploaded resumes:", uploadedResumeUrls);
 
     // ✅ FIXED: Send correct body to Agentic AI API (no nested `data`)
-    const agentPayload = {
-      source: "web",
-      title: data.jobTitle,
-      job: stripHtml(data.jobDescription),
-      skills: data.requiredSkills,
-      jobtype: data.jobtype,
-      yoe: data.yearsOfExperience,
-      industry: data.industry,
-      mail: data.email,
-      client: data.client,
-      owner: data.owner,
-      requestor: data.requestor,
-    };
+ console.log("🚀 Preparing job submission...");
+const agentPayload = {
+  jobTitle: jobDetails?.title,
+  jobDescription: jobDetails?.job,
+  keySkills: jobDetails?.skills,
+  yearsOfExperience: jobDetails?.yoe,
+  jobType: jobDetails?.jobtype,
+  industry: jobDetails?.industry,
+  client: jobDetails?.client,
+  resumes: uploadedResumes,
+};
 
-    const response = await fetch("https://agentic-ai.co.in/api/agentic-ai/workflow-exe", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({data: agentPayload}),
-    });
+console.log("🧩 agentPayload content:", agentPayload);
+
+const response = await fetch("https://agentic-ai.co.in/api/agentic-ai/workflow-exe", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ data: agentPayload }), // ✅ correct wrapping
+});
+
 
     const result = await response.json();
     if (!response.ok) throw new Error(result.message || `Agentic AI error: ${response.status}`);

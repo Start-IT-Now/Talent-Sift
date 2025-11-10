@@ -12,10 +12,6 @@ import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
 
 
-const [isProcessing, setIsProcessing] = useState(false);
-const [lastError, setLastError] = useState(null);
-
-
 const FloatingIcon = ({ children, className }) => (
   <motion.div
     className={`absolute bg-white/20 backdrop-blur-sm p-3 rounded-full shadow-lg ${className}`}
@@ -75,6 +71,10 @@ function JobDescriptionEditor({ value, onChange, minWords = 100, maxWords = 500,
 }
 
 const JobFormStep1 = ({ formData, handleInputChange, onExistingSubmit, onNewSubmit }) => {
+  
+const [isProcessing, setIsProcessing] = useState(false);
+const [lastError, setLastError] = useState(null);
+
   const [isLoading, setIsLoading] = useState(false);
   const [jobDescriptionIsValid, setJobDescriptionIsValid] = useState(false);
   const [mode, setMode] = useState('new');
@@ -135,18 +135,19 @@ const handleNewSubmit = async (e) => {
   return (
     <div className="flex flex-col min-h-screen">
       <main className="flex-grow">
-{isProcessing && (
-  <div className="fixed inset-0 bg-black/30 z-[9999] flex flex-col items-center justify-center">
-    <div className="animate-spin h-10 w-10 rounded-full border-4 border-white border-t-transparent" />
-    <p className="text-white mt-3 text-sm">Processing… please wait</p>
-    {lastError && (
-      <p className="text-red-200 mt-2 text-xs max-w-md text-center">
-        {String(lastError)}
-      </p>
-    )}
-  </div>
-)}
-        <div className="w-full max-w-6xl flex flex-col lg:flex-row items-center justify-center gap-24">
+       {/* ✅ blocking overlay */}
+        {isProcessing && (
+          <div className="fixed inset-0 bg-black/30 z-[9999] flex flex-col items-center justify-center">
+            <div className="animate-spin h-10 w-10 rounded-full border-4 border-white border-t-transparent" />
+            <p className="text-white mt-3 text-sm">Processing… please wait</p>
+            {lastError && (
+              <p className="text-red-200 mt-2 text-xs max-w-md text-center">
+                {String(lastError)}
+              </p>
+            )}
+          </div>
+        )}
+             <div className="w-full max-w-6xl flex flex-col lg:flex-row items-center justify-center gap-24">
 
           {/* Left Side: Illustration */}
           <motion.div

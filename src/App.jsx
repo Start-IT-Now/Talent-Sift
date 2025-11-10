@@ -101,16 +101,11 @@ function App() {
   }
 }, []);
 
- // ✅ New Submission (Fixed)
-const handleNewSubmit = async (data) => {
-  console.log("Form submission:", data);
 
-  // Local caching for re-use
-  localStorage.setItem("industry", data.industry);
-  localStorage.setItem("client", data.client);
-  localStorage.setItem("owner", data.owner);
-  localStorage.setItem("requestor", data.requestor);
-  localStorage.setItem("success", JSON.stringify(data));
+  const handleNewSubmit = async (data) => {
+  console.log("Form submission:", data);
+  setIsProcessing(true);
+  setLastError(null);
 
   // Basic validation
   if (
@@ -128,6 +123,7 @@ const handleNewSubmit = async (data) => {
       description: "Please fill in all required fields before submitting.",
       variant: "destructive",
     });
+    setIsProcessing(false);
     return;
   }
 
@@ -137,29 +133,31 @@ const handleNewSubmit = async (data) => {
       description: "Please upload at least one resume before submitting.",
       variant: "destructive",
     });
+    setIsProcessing(false);
     return;
   }
 
-  // ✅ Validate user email
-  const validateRes = await fetch("/api/validateuser", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email: data.email }),
-  });
-  const validateData = await validateRes.json();
-  if (validateRes.status !== 200 || validateData.status !== "success") {
-    toast({
-      title: "Unauthorized",
-      description: validateData.message || "Unauthorized company domain",
-      variant: "destructive",
+  // Validate user email
+  try {
+    const validateRes = await fetch("/api/validateuser", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: data.email }),
     });
+    const validateData = await validateRes.json().catch(() => ({}));
+    if (validateRes.status !== 200 || validateData.status !== "success") {
+      throw new Error(validateData.message || "Unauthorized company domain");
+    }
+  } catch (e) {
+    setLastError(e.message);
+    toast({ title: "Unauthorized", description: e.message, variant: "destructive" });
+    setIsProcessing(false);
     return;
   }
 
   try {
-    // ✅ 1. Upload resumes to Supabase first
+    // 1) Upload resumes to Supabase
     const uploadedResumeUrls = [];
-
     for (const file of data.resumeFiles) {
       if (!(file instanceof File)) continue;
 
@@ -170,15 +168,9 @@ const handleNewSubmit = async (data) => {
 
       if (uploadError) {
         console.error("Supabase upload error:", uploadError);
-        toast({
-          title: "Upload Failed",
-          description: `Failed to upload ${file.name}.`,
-          variant: "destructive",
-        });
-        return;
+        throw new Error(`Failed to upload ${file.name}.`);
       }
 
-      // ✅ Get public URL
       const { data: pub, error: pubErr } = supabase
         .storage
         .from("Talent Sift")
@@ -186,120 +178,119 @@ const handleNewSubmit = async (data) => {
 
       if (pubErr) {
         console.error("Public URL error:", pubErr);
-        continue;
+        throw new Error(`Failed to generate URL for ${file.name}.`);
       }
 
       uploadedResumeUrls.push(pub.publicUrl);
     }
 
-    console.log("Uploaded resumes:", uploadedResumeUrls);
-
     if (!uploadedResumeUrls.length) {
-      toast({
-        title: "Upload Failed",
-        description: "Could not upload resumes. Please try again.",
-        variant: "destructive",
-      });
-      return;
+      throw new Error("Could not upload resumes. Please try again.");
     }
+    console.log("✅ Uploaded resumes:", uploadedResumeUrls);
 
-    // ✅ 2. Prepare job payload (new format — no 'data' wrapper)
-    const stripHtml = (html) => {
-      const div = document.createElement("div");
-      div.innerHTML = html;
-      return div.textContent || "";
+    // 2) Prepare workflow payload
+    const plainJD = stripHtml(data.jobDescription || "");
+    const dynamicOrgId = Number(data.requestor || orgId || localStorage.getItem("requestor") || 1);
+
+    const payload = {
+      org_id: dynamicOrgId,
+      exe_name: data.jobTitle || "Untitled Job",
+      workflow_id: "resume_ranker",
+      data: {
+        job_description: plainJD,
+        resumes: uploadedResumeUrls,
+        yearsOfExperience: String(data.yearsOfExperience ?? ""),
+        jobtype: data.jobtype,
+        industry: data.industry,
+        client: data.client,
+        jobTitle: data.jobTitle,
+        email: data.email,
+        owner: data.owner,
+        requestor: data.requestor,
+      },
     };
 
-    // after you build `uploadedResumeUrls` and `plainJD`
- try {
-      const form = new FormData();
+    console.log("🚀 Sending payload:", payload);
 
-      const stripHtml = (html) => {
-        const div = document.createElement("div");
-        div.innerHTML = html;
-        return div.textContent || "";
-      };
+    // 3) Call workflow API (JSON)
+    const response = await fetch("https://agentic-ai.co.in/api/agentic-ai/workflow-exe", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
 
-const dynamicOrgId =
-  data.requestor || orgId || localStorage.getItem("requestor") || 2; // fallback to 2 if missing
-
-const jobPayload = {
-  org_id: dynamicOrgId, // ✅ requestor used as org_id
-  exe_name: data.requiredSkills || "run 1",
-  workflow_id: "resume_ranker",
-  job_description: stripHtml(data.jobDescription),
-};
-
-
-      console.log("Sending payload:", jobPayload);
-      console.log("🧠 Using org_id (requestor):", dynamicOrgId);
-
-
-      form.append("data", JSON.stringify(jobPayload));
-
-      data.resumeFiles.forEach((file) => {
-        if (file instanceof File) {
-      form.append("resumes", file);
-        }
-      });
-
-      const response = await fetch("https://agentic-ai.co.in/api/agentic-ai/workflow-exe", {
-        method: "POST",
-        body: form,
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.message || `Upload failed with status ${response.status}`);
-      }
-
-      console.log("✅ Response data:", result.data);
-
-      if (result.data?.id) {
-        setOrgId(result.data.id); // ✅ Store in state
-        localStorage.setItem("caseId", result.data.id); // ✅ Persist across sessions
-      }
-
-      localStorage.setItem("resumeResults", JSON.stringify(result.data));
-    } catch (error) {
-      console.error("Form submission error:", error);
-      throw error;
+    const workflowResult = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      console.error("Workflow error", response.status, workflowResult);
+      throw new Error(workflowResult?.detail?.[0]?.msg || workflowResult.message || `Workflow failed: ${response.status}`);
     }
+    console.log("✅ Workflow success:", workflowResult);
 
-     // ✅ 4. Save AI results to Supabase
-    try {
-      const candidates = result.data?.result || [];
-      const insertData = candidates.map((c) => ({
-        org_id: dynamicOrgId,
-        exe_name: result.data?.exe_name || data.jobTitle,
-        candidate_id: c.candidateId,
-        name: c.name,
-        email: c.email,
-        phone: c.phone,
-        experience: c.experience,
-        rank: c.Rank,
-        justification: c.justification,
+    // 4) Save AI results to Supabase (choose one table)
+    const candidates = workflowResult?.data?.result || [];
+
+    // A) If you want to save to `resume_results` (flat table)
+    /*
+    const rows = candidates.map((c, i) => ({
+      org_id: dynamicOrgId,
+      exe_name: workflowResult.data?.exe_name || data.jobTitle,
+      candidate_id: Number(c.candidateId ?? i + 1),
+      name: c.name ?? null,
+      email: c.email ?? null,
+      phone: c.phone ?? null,
+      experience: Number(c.experience ?? 0),
+      rank: Number(c.Rank ?? 0),
+      justification: c.justification ?? null,
+    }));
+    const { data: inserted, error: insertErr } = await supabase
+      .from("resume_results")
+      .insert(rows)
+      .select();
+    if (insertErr) throw insertErr;
+    */
+
+    // B) If you want to save to `applicants` (jsonb + context)
+    if (candidates.length) {
+      const rows = candidates.map((c, i) => ({
+        name: c.name || "Unknown",
+        score: String(c.score ?? 0),
+        email: c.email || "",
+        phone: c.phone || "",
+        skills: data.requiredSkills || "",
+        job_title: data.jobTitle || "",
+        job_description: plainJD,
+        years_of_experience: String(data.yearsOfExperience ?? ""),
+        industry: data.industry || "",
+        owner: data.owner || "",
+        client: data.client || "",
+        requestor: String(dynamicOrgId),
+        job_type: data.jobtype || "",
+        resume_url: uploadedResumeUrls[i] || "",
+        agent_output: {
+          justification: c.justification || "",
+          experience: c.experience || "",
+          rank: c.Rank || i + 1,
+          org_id: dynamicOrgId,
+          exe_name: workflowResult.data?.exe_name || data.jobTitle,
+        },
       }));
 
-      if (insertData.length > 0) {
-        const { data: inserted, error: insertErr } = await supabase
-          .from("resume_results")
-          .insert(insertData);
+      const { data: inserted, error: insertErr } = await supabase
+        .from("applicants")
+        .insert(rows)
+        .select();
 
-        if (insertErr) {
-          console.error("❌ Supabase insert error:", insertErr);
-        } else {
-          console.log("✅ Stored results in Supabase:", inserted);
-        }
-      } else {
-        console.warn("⚠️ No candidates found to store.");
+      if (insertErr) {
+        console.error("❌ Supabase insert error:", insertErr);
+        throw new Error(insertErr.message || "Failed to save applicants.");
       }
-    } catch (dbErr) {
-      console.error("⚠️ Failed to save to Supabase:", dbErr);
+      console.log("✅ Stored applicants in Supabase:", inserted);
+    } else {
+      console.warn("⚠️ No candidates found to store.");
     }
 
-    // ✅ 5. Log to Google Sheet
+    // 5) Log to Google Sheet
     try {
       await fetch("/api/logToGoogleSheet", {
         method: "POST",
@@ -307,20 +298,16 @@ const jobPayload = {
         body: JSON.stringify({
           email: data.email,
           resumeCount: data.resumeFiles.length,
-          caseId: result.data?.id || "N/A",
+          caseId: workflowResult?.data?.id || "N/A",
         }),
       });
     } catch (sheetError) {
       console.warn("⚠️ Google Sheet log failed:", sheetError);
     }
 
-    // ✅ 6. Notify success
-    toast({
-      title: "Success!",
-      description: "✅ Resumes processed successfully.",
-    });
+    // 6) Success toast + redirect
+    toast({ title: "Success!", description: "✅ Resumes processed successfully." });
 
-    // ✅ 7. Redirect
     const params = new URLSearchParams({
       client: data.client || "",
       industry: data.industry || "",
@@ -328,15 +315,18 @@ const jobPayload = {
       owner: data.owner || "",
       skills: data.requiredSkills || "",
     }).toString();
-
     navigate(`/resumes?${params}`);
+
   } catch (error) {
     console.error("❌ Upload/Process failed:", error);
+    setLastError(error.message || String(error));
     toast({
       title: "Upload Failed",
       description: error.message || "❌ Something went wrong.",
       variant: "destructive",
     });
+  } finally {
+    setIsProcessing(false);
   }
 };
 

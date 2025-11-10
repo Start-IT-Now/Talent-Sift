@@ -71,6 +71,8 @@ function JobDescriptionEditor({ value, onChange, minWords = 100, maxWords = 500,
 }
 
 const JobFormStep1 = ({ formData, handleInputChange, onExistingSubmit, onNewSubmit }) => {
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [lastError, setLastError] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [jobDescriptionIsValid, setJobDescriptionIsValid] = useState(false);
   const [mode, setMode] = useState('new');

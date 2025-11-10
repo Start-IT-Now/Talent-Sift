@@ -71,10 +71,6 @@ function JobDescriptionEditor({ value, onChange, minWords = 100, maxWords = 500,
 }
 
 const JobFormStep1 = ({ formData, handleInputChange, onExistingSubmit, onNewSubmit }) => {
-  
-const [isProcessing, setIsProcessing] = useState(false);
-const [lastError, setLastError] = useState(null);
-
   const [isLoading, setIsLoading] = useState(false);
   const [jobDescriptionIsValid, setJobDescriptionIsValid] = useState(false);
   const [mode, setMode] = useState('new');
@@ -136,18 +132,12 @@ const handleNewSubmit = async (e) => {
     <div className="flex flex-col min-h-screen">
       <main className="flex-grow">
        {/* ✅ blocking overlay */}
-        {isProcessing && (
-          <div className="fixed inset-0 bg-black/30 z-[9999] flex flex-col items-center justify-center">
-            <div className="animate-spin h-10 w-10 rounded-full border-4 border-white border-t-transparent" />
-            <p className="text-white mt-3 text-sm">Processing… please wait</p>
-            {lastError && (
-              <p className="text-red-200 mt-2 text-xs max-w-md text-center">
-                {String(lastError)}
-              </p>
-            )}
+        {isLoading && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/80 backdrop-blur-md">
+            <div className="text-lg font-semibold text-blue-600 animate-pulse">Processing...</div>
           </div>
         )}
-             <div className="w-full max-w-6xl flex flex-col lg:flex-row items-center justify-center gap-24">
+        <div className="w-full max-w-6xl flex flex-col lg:flex-row items-center justify-center gap-24">
 
           {/* Left Side: Illustration */}
           <motion.div
@@ -324,8 +314,6 @@ const handleNewSubmit = async (e) => {
     />
     {errors.email && <p className="text-red-600 text-sm">{errors.email}</p>}
 </div>
-
-
 
                 {/* Resume Upload */}
                 <ResumeMultiDropzoneStyled

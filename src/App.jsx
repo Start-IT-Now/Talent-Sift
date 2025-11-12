@@ -212,7 +212,8 @@ for (const file of data.resumeFiles) {
   if (file instanceof File) form.append('resumes', file);
 }
 
-    console.log("🚀 Sending payload:",);
+  console.log("🚀 Sending form entries (multipart):");
+for (const [k,v] of form.entries()) console.log(k, v);
 
     // 3) Call workflow API (JSON)
     const response = await fetch("https://agentic-ai.co.in/api/agentic-ai/workflow-exe", {
@@ -289,6 +290,11 @@ for (const file of data.resumeFiles) {
     } else {
       console.warn("⚠️ No candidates found to store.");
     }
+console.log('Supabase URL:', supabase);
+console.log('Supabase Key (first 10 chars):', supabaseAnonKey.slice(0, 10));
+const session = await supabase.auth.getSession();
+console.log('Auth session:', session);
+
 
     // 5) Log to Google Sheet
     try {

@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { Toaster } from "@/components/ui/toaster";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/lib/supabaseClient";
+import { saveApplicantToSupabase } from "@/lib/saveApplicant";
 import Footer from "@/components/Footer";
 import JobFormStep1 from "@/components/JobFormStep1";
 import ResumeList from "@/components/existing";
@@ -250,6 +251,16 @@ for (const [k,v] of form.entries()) console.log(k, v);
       .select();
     if (insertErr) throw insertErr;
     */
+// inside handleNewSubmit where you want to persist one applicant:
+await saveApplicantToSupabase({
+  jobTitle: data.jobTitle,
+  yearsOfExperience: data.yearsOfExperience,
+  jobType: data.jobtype,
+  industry: data.industry,
+  owner: data.owner,
+  requestor: data.requestor
+});
+
 
     // B) If you want to save to `applicants` (jsonb + context)
     if (candidates.length) {
@@ -290,8 +301,11 @@ for (const [k,v] of form.entries()) console.log(k, v);
     } else {
       console.warn("⚠️ No candidates found to store.");
     }
+
+    
 console.log('SUPABASE URL:', import.meta.env.VITE_SUPABASE_URL);
 console.log('SUPABASE ANON KEY (len):', typeof import.meta.env.VITE_SUPABASE_ANON_KEY, import.meta.env.VITE_SUPABASE_ANON_KEY?.length);
+
 
 
     // 5) Log to Google Sheet
@@ -409,5 +423,4 @@ console.log('SUPABASE ANON KEY (len):', typeof import.meta.env.VITE_SUPABASE_ANO
     </div>
   );
 }
-
 export default App;

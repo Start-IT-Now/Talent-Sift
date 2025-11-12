@@ -217,7 +217,6 @@ for (const file of data.resumeFiles) {
     // 3) Call workflow API (JSON)
     const response = await fetch("https://agentic-ai.co.in/api/agentic-ai/workflow-exe", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
       body: form,
     });
 

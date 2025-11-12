@@ -25,10 +25,13 @@ function App() {
     resumeFiles: [],
   });
 
-  const [orgId, setOrgId] = useState(null); // ✅ Track case/org ID
+  const [orgId, setOrgId] = useState(null); 
   const [submittedExisting, setSubmittedExisting] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [lastError, setLastError] = useState(null);
+
   
 
   // Auto-populate jobDescription and requiredSkills from URL params on mount

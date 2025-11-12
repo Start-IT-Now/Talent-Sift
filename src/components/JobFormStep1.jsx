@@ -104,7 +104,7 @@ const validate = () => {
 const handleNewSubmit = async (e) => {
   e.preventDefault();
   if (!validate()) return;
-  await onNewSubmit();
+  await onNewSubmit(formData);
 };
 
   useEffect(() => {

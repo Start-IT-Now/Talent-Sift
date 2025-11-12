@@ -212,7 +212,7 @@ for (const file of data.resumeFiles) {
   if (file instanceof File) form.append('resumes', file);
 }
 
-    console.log("🚀 Sending payload:", payload);
+    console.log("🚀 Sending payload:",);
 
     // 3) Call workflow API (JSON)
     const response = await fetch("https://agentic-ai.co.in/api/agentic-ai/workflow-exe", {

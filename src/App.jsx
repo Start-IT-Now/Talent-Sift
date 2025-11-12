@@ -196,23 +196,21 @@ function App() {
     const plainJD = stripHtml(data.jobDescription || "");
     const dynamicOrgId = Number(data.requestor || orgId || localStorage.getItem("requestor") || 1);
 
-    const payload = {
-      org_id: dynamicOrgId,
-      exe_name: data.jobTitle || "Untitled Job",
-      workflow_id: "resume_ranker",
-      data: {
-        job_description: plainJD,
-        resumes: uploadedResumeUrls,
-        yearsOfExperience: String(data.yearsOfExperience ?? ""),
-        jobtype: data.jobtype,
-        industry: data.industry,
-        client: data.client,
-        jobTitle: data.jobTitle,
-        email: data.email,
-        owner: data.owner,
-        requestor: data.requestor,
-      },
-    };
+ const form = new FormData();
+
+// server expects a field named 'data' containing JSON
+form.append('data', JSON.stringify({
+  org_id: Number(dynamicOrgId),
+  exe_name: requiredSkills || "Untitled Job",
+  workflow_id: 'resume_ranker',
+  job_description: plainJD,
+  // do not include raw File objects in this JSON — resume file parts go separately below
+}));
+
+// add file parts (if the API accepts 'resumes' multiple parts)
+for (const file of data.resumeFiles) {
+  if (file instanceof File) form.append('resumes', file);
+}
 
     console.log("🚀 Sending payload:", payload);
 
@@ -220,7 +218,7 @@ function App() {
     const response = await fetch("https://agentic-ai.co.in/api/agentic-ai/workflow-exe", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
+      body: form,
     });
 
     const workflowResult = await response.json().catch(() => ({}));

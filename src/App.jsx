@@ -290,10 +290,8 @@ for (const [k,v] of form.entries()) console.log(k, v);
     } else {
       console.warn("⚠️ No candidates found to store.");
     }
-console.log('Supabase URL:', supabase);
-console.log('Supabase Key (first 10 chars):', supabaseAnonKey.slice(0, 10));
-const session = await supabase.auth.getSession();
-console.log('Auth session:', session);
+console.log('SUPABASE URL:', import.meta.env.VITE_SUPABASE_URL);
+console.log('SUPABASE ANON KEY (len):', typeof import.meta.env.VITE_SUPABASE_ANON_KEY, import.meta.env.VITE_SUPABASE_ANON_KEY?.length);
 
 
     // 5) Log to Google Sheet

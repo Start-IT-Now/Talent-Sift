@@ -70,45 +70,49 @@ function JobDescriptionEditor({ value, onChange, minWords = 100, maxWords = 500,
   );
 }
 
-const JobFormStep1 = ({ formData, handleInputChange, onExistingSubmit, onNewSubmit, }) => {
+const JobFormStep1 = ({ formData, handleInputChange, onExistingSubmit, onNewSubmit }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [jobDescriptionIsValid, setJobDescriptionIsValid] = useState(false);
   const [mode, setMode] = useState('new');
   const [errors, setErrors] = useState({});
 
-const validate = () => {
-  const newErrors = {};
-  if (mode === 'new') {
-    if (!formData.jobTitle) newErrors.jobTitle = 'Job Title is required';
-    if (!formData.jobtype) newErrors.jobtype = 'Job Type is required';
-    if (!formData.requiredSkills) newErrors.requiredSkills = 'Please enter one or more skills';
-    if (!formData.jobDescription || !jobDescriptionIsValid) {
-      newErrors.jobDescription = 'Job description must be between 100 and 200 words';
-    }
-    if (!formData.industry) newErrors.industry = 'Industry is required';
-    if (!formData.email) newErrors.email = 'Email is required';
-    else {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(formData.email)) {
-        newErrors.email = 'Please enter a valid email address';
+  const validate = () => {
+    const newErrors = {};
+    if (mode === 'new') {
+      if (!formData.jobTitle) newErrors.jobTitle = 'Job Title is required';
+      if (!formData.jobtype) newErrors.jobtype = 'Job Type is required';
+      if (!formData.requiredSkills) newErrors.requiredSkills = 'Please enter one or more skills';
+      if (!formData.jobDescription || !jobDescriptionIsValid) {
+        newErrors.jobDescription = 'Job description must be between 100 and 200 words';
+      }
+      if (!formData.industry) newErrors.industry = 'Industry is required';
+      if (!formData.email) newErrors.email = 'Email is required';
+      else {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(formData.email)) {
+          newErrors.email = 'Please enter a valid email address';
+        }
+      }
+      if (!formData.resumeFiles || formData.resumeFiles.length === 0) {
+        newErrors.resumeFiles = 'At least one resume must be uploaded';
       }
     }
-    if (!formData.resumeFiles || formData.resumeFiles.length === 0) {
-      newErrors.resumeFiles = 'At least one resume must be uploaded';
-    }
-  }
-  setErrors(newErrors);
-  return Object.keys(newErrors).length === 0;
-};
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
-  async function onNewSubmit() {
+  // renamed local submit handler to avoid shadowing the prop
+  const handleSubmit = async (e) => {
+    e.preventDefault();
     if (!validate()) return;
     setIsLoading(true);
     try {
+      // call the prop that actually does work and pass formData
       await onNewSubmit(formData);
-      const skillsArray = formData.requiredSkills
+
+      const skillsArray = (formData.requiredSkills || '')
         .split(',')
-        .map((skill) => skill.trim())
+        .map((s) => s.trim())
         .filter(Boolean);
       localStorage.setItem('keySkills', JSON.stringify(skillsArray));
     } catch (error) {
@@ -117,7 +121,7 @@ const validate = () => {
     } finally {
       setIsLoading(false);
     }
-  }
+  };
 
   useEffect(() => {
     const runExisting = async () => {
@@ -135,8 +139,7 @@ const validate = () => {
     runExisting();
   }, [mode, onExistingSubmit]);
 
-  console.log("Validation check data:", formData, jobDescriptionIsValid, errors);
-
+  console.log('Validation check data:', formData, jobDescriptionIsValid, errors);
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -222,7 +225,7 @@ const validate = () => {
 
               {/* New Case Form */}
               {mode === 'new' && (
-            <form onSubmit={handleNewSubmit}>
+            <form onSubmit={handleSubmit}>
 
                 {/* Job Title & Experience */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

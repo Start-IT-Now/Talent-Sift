@@ -70,7 +70,7 @@ function JobDescriptionEditor({ value, onChange, minWords = 100, maxWords = 500,
   );
 }
 
-const JobFormStep1 = ({ formData, handleInputChange, onExistingSubmit, onNewSubmit }) => {
+const JobFormStep1 = ({ formData, handleInputChange, onExistingSubmit, onNewSubmit, }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [jobDescriptionIsValid, setJobDescriptionIsValid] = useState(false);
   const [mode, setMode] = useState('new');
@@ -101,11 +101,23 @@ const validate = () => {
   return Object.keys(newErrors).length === 0;
 };
 
-const handleNewSubmit = async (e) => {
-  e.preventDefault();
-  if (!validate()) return;
-  await onNewSubmit(formData);
-};
+  async function onNewSubmit() {
+    if (!validate()) return;
+    setIsLoading(true);
+    try {
+      await onNewSubmit(formData);
+      const skillsArray = formData.requiredSkills
+        .split(',')
+        .map((skill) => skill.trim())
+        .filter(Boolean);
+      localStorage.setItem('keySkills', JSON.stringify(skillsArray));
+    } catch (error) {
+      console.error('Submission error:', error);
+      console.log('Validation errors:', errors, formData);
+    } finally {
+      setIsLoading(false);
+    }
+  }
 
   useEffect(() => {
     const runExisting = async () => {

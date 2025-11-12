@@ -201,7 +201,7 @@ function App() {
 // server expects a field named 'data' containing JSON
 form.append('data', JSON.stringify({
   org_id: Number(dynamicOrgId),
-  exe_name: requiredSkills || "Untitled Job",
+  exe_name: data.requiredSkills || 'none',
   workflow_id: 'resume_ranker',
   job_description: plainJD,
   // do not include raw File objects in this JSON — resume file parts go separately below

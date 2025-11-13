@@ -233,7 +233,6 @@ for (const [k,v] of form.entries()) console.log(k, v);
     const candidates = workflowResult?.data?.result || [];
 
     // A) If you want to save to `resume_results` (flat table)
-    /*
     const rows = candidates.map((c, i) => ({
       org_id: dynamicOrgId,
       exe_name: workflowResult.data?.exe_name || data.jobTitle,
@@ -250,7 +249,7 @@ for (const [k,v] of form.entries()) console.log(k, v);
       .insert(rows)
       .select();
     if (insertErr) throw insertErr;
-    */
+    
 // inside handleNewSubmit where you want to persist one applicant:
 await saveApplicantToSupabase({
   jobTitle: data.jobTitle,

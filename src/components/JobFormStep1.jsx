@@ -6,11 +6,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import ResumeMultiDropzoneStyled from '@/components/ResumeMultiDropzoneStyled';
-import { supabase } from '@/lib/supabaseClient';
 import pic from '../pic.png';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
-
 
 const FloatingIcon = ({ children, className }) => (
   <motion.div
@@ -70,54 +68,50 @@ function JobDescriptionEditor({ value, onChange, minWords = 100, maxWords = 500,
   );
 }
 
-const JobFormStep1 = ({ formData, handleInputChange, onExistingSubmit, onNewSubmit }) => {
+const JobFormStep1 = ({ formData, handleInputChange, onNewSubmit, onExistingSubmit }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [jobDescriptionIsValid, setJobDescriptionIsValid] = useState(false);
   const [mode, setMode] = useState('new');
   const [errors, setErrors] = useState({});
 
-  const validate = () => {
-    const newErrors = {};
-    if (mode === 'new') {
-      if (!formData.jobTitle) newErrors.jobTitle = 'Job Title is required';
-      if (!formData.jobtype) newErrors.jobtype = 'Job Type is required';
-      if (!formData.requiredSkills) newErrors.requiredSkills = 'Please enter one or more skills';
-      if (!formData.jobDescription || !jobDescriptionIsValid) {
-        newErrors.jobDescription = 'Job description must be between 100 and 200 words';
-      }
-      if (!formData.industry) newErrors.industry = 'Industry is required';
-      if (!formData.email) newErrors.email = 'Email is required';
-      else {
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(formData.email)) {
-          newErrors.email = 'Please enter a valid email address';
-        }
-      }
-      if (!formData.resumeFiles || formData.resumeFiles.length === 0) {
-        newErrors.resumeFiles = 'At least one resume must be uploaded';
+const validate = () => {
+  const newErrors = {};
+  if (mode === 'new') {
+    if (!formData.jobTitle) newErrors.jobTitle = 'Job Title is required';
+    if (!formData.jobtype) newErrors.jobtype = 'Job Type is required';
+    if (!formData.requiredSkills) newErrors.requiredSkills = 'Please enter one or more skills';
+    if (!formData.jobDescription || !jobDescriptionIsValid) {
+      newErrors.jobDescription = 'Job description must be between 100 and 200 words';
+    }
+    if (!formData.industry) newErrors.industry = 'Industry is required';
+    if (!formData.email) newErrors.email = 'Email is required';
+    else {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(formData.email)) {
+        newErrors.email = 'Please enter a valid email address';
       }
     }
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
+    if (!formData.resumeFiles || formData.resumeFiles.length === 0) {
+      newErrors.resumeFiles = 'At least one resume must be uploaded';
+    }
+  }
+  setErrors(newErrors);
+  return Object.keys(newErrors).length === 0;
+};
 
-  // renamed local submit handler to avoid shadowing the prop
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const onSubmit = async () => {
     if (!validate()) return;
     setIsLoading(true);
     try {
-      // call the prop that actually does work and pass formData
       await onNewSubmit(formData);
-
-      const skillsArray = (formData.requiredSkills || '')
+      const skillsArray = formData.requiredSkills
         .split(',')
-        .map((s) => s.trim())
+        .map((skill) => skill.trim())
         .filter(Boolean);
       localStorage.setItem('keySkills', JSON.stringify(skillsArray));
     } catch (error) {
       console.error('Submission error:', error);
-      console.log('Validation errors:', errors, formData);
+        console.log('Validation errors:', errors, formData);
     } finally {
       setIsLoading(false);
     }
@@ -139,20 +133,19 @@ const JobFormStep1 = ({ formData, handleInputChange, onExistingSubmit, onNewSubm
     runExisting();
   }, [mode, onExistingSubmit]);
 
-  console.log('Validation check data:', formData, jobDescriptionIsValid, errors);
+  console.log("Validation check data:", formData, jobDescriptionIsValid, errors);
+
 
   return (
     <div className="flex flex-col min-h-screen">
       <main className="flex-grow">
-       {/* ✅ blocking overlay */}
         {isLoading && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/80 backdrop-blur-md">
             <div className="text-lg font-semibold text-blue-600 animate-pulse">Processing...</div>
           </div>
         )}
         <div className="w-full max-w-6xl flex flex-col lg:flex-row items-center justify-center gap-24">
-
-          {/* Left Side: Illustration */}
+          {/* Left Side */}
           <motion.div
             initial={{ opacity: 0, x: -50 }}
             animate={{ opacity: 1, x: 0 }}
@@ -225,9 +218,13 @@ const JobFormStep1 = ({ formData, handleInputChange, onExistingSubmit, onNewSubm
 
               {/* New Case Form */}
               {mode === 'new' && (
-            <form onSubmit={handleSubmit}>
-
-                {/* Job Title & Experience */}
+              <form
+                onSubmit={(e) => {
+                e.preventDefault();
+                onSubmit();
+         }}
+  >
+                  {/* Job Title & Experience */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">
                       <Label className="flex items-center gap-2">                   
@@ -327,6 +324,8 @@ const JobFormStep1 = ({ formData, handleInputChange, onExistingSubmit, onNewSubm
     />
     {errors.email && <p className="text-red-600 text-sm">{errors.email}</p>}
 </div>
+
+
 
                 {/* Resume Upload */}
                 <ResumeMultiDropzoneStyled

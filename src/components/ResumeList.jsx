@@ -1,15 +1,19 @@
-import React, { useState, useEffect, useMemo } from 'react'; 
-import { motion } from 'framer-motion';
-import { Range } from 'react-range';
-import {  useNavigate } from 'react-router-dom';  // <-- Import useNavigate
+import React, { useState, useEffect, useMemo } from "react";
+import { motion } from "framer-motion";
+import { Range } from "react-range";
+import { useNavigate } from "react-router-dom";
 import Footer from "@/components/Footer";
 
 const getRankLabel = (score) => {
-  // You can fill this function with labels for scores if needed
+  // optional: return a friendly label based on score
+  if (score >= 8) return " (Excellent)";
+  if (score >= 6) return " (Good)";
+  if (score >= 4) return " (Average)";
+  return "";
 };
 
-  const ResumeList =  ({ client, industry, requiredskills, owner }) => {
-  const navigate = useNavigate(); // <-- Initialize navigate hook
+const ResumeList = ({ client: propClient, industry: propIndustry, requiredskills, owner: propOwner }) => {
+  const navigate = useNavigate();
 
   const [resumes, setResumes] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -26,7 +30,6 @@ const getRankLabel = (score) => {
 
   useEffect(() => {
     try {
-      // Load user key skills from localStorage
       const storedSkills = localStorage.getItem("keySkills");
       const parsedSkills = storedSkills ? JSON.parse(storedSkills) : [];
       setUserKeySkills(Array.isArray(parsedSkills) ? parsedSkills : []);
@@ -34,27 +37,35 @@ const getRankLabel = (score) => {
       const storedResumes = localStorage.getItem("resumeResults");
       const parsedResumes = storedResumes ? JSON.parse(storedResumes) : null;
 
-      if (parsedResumes && Array.isArray(parsedResumes.result)) {
-        const mapped = parsedResumes.result.map((item, index) => ({
-          orgId: parsedResumes.id,
-          exeName: parsedResumes.exe_name,
-          candidateId: index + 1,
+      // Support two shapes:
+      // 1) { id, exe_name, result: [ ... ] }
+      // 2) { id, exe_name, results: [ ... ] } or direct array
+      const resultsArray =
+        (parsedResumes && Array.isArray(parsedResumes.result) && parsedResumes.result) ||
+        (parsedResumes && Array.isArray(parsedResumes.results) && parsedResumes.results) ||
+        (Array.isArray(parsedResumes) && parsedResumes) ||
+        null;
+
+      if (resultsArray) {
+        const mapped = resultsArray.map((item, index) => ({
+          orgId: parsedResumes?.id || null,
+          exeName: parsedResumes?.exe_name || null,
+          candidateId: item.candidateId ?? index + 1,
           name: item.name || `Candidate ${index + 1}`,
-          Rank: item.score || 0,
+          Rank: item.score ?? 0,
           justification: item.justification || "",
-          experience: typeof item.experience === "number" ? item.experience : 0,
+          experience: typeof item.experience === "number" ? item.experience : Number(item.experience) || 0,
           email: item.email === "xxx" || !item.email ? "No email" : item.email,
           phone: item.phone === "xxx" || !item.phone ? "No phone" : item.phone,
         }));
 
         setResumes(mapped);
-        setCaseId(parsedResumes.id);
+        setCaseId(parsedResumes?.id || null);
       }
     } catch (err) {
       console.error("Error loading or parsing data:", err);
     }
   }, []);
-
 
   useEffect(() => {
     if (resumes.length > 0) {
@@ -64,48 +75,52 @@ const getRankLabel = (score) => {
   }, [resumes, orgId]);
 
   const handleShortlist = async (candidate) => {
+    setLoadingId(candidate.candidateId);
     try {
-      setLoadingId(candidate.candidateId);
-     client = localStorage.getItem("client") || "N/A";
-     industry = localStorage.getItem("industry") || "Not Mentioned";
-     owner = localStorage.getItem("owner") || "Not Mentioned";
+      // declare local vars
+      const client = localStorage.getItem("client") || propClient || "N/A";
+      const industry = localStorage.getItem("industry") || propIndustry || "Not Mentioned";
+      const owner = localStorage.getItem("owner") || propOwner || "Not Mentioned";
+
+      const skillsString =
+        (Array.isArray(userKeySkills) ? userKeySkills.join(", ") : (typeof userKeySkills === "string" ? userKeySkills : "")) ||
+        requiredskills ||
+        "No Skills";
 
       const res = await fetch("/api/send-email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-body: JSON.stringify({
-  name: candidate.name || "No name",
-  email: candidate.email || "No email",
-  phone: candidate.phone || "No phone",
-  experience: candidate.experience || "0",
-  score: candidate.Rank || candidate.score || "0",
-  industry: industry || "Not Mentioned",
-  owner: owner || "Not Mentioned",
-  client: client || "N/A",
-  Skills:
-    userKeySkills.join(", ") ||
-    requiredskills ||
-    "No Skills",
-  description: candidate.justification || "No context provided",
-}),
+        body: JSON.stringify({
+          name: candidate.name || "No name",
+          email: candidate.email || "No email",
+          phone: candidate.phone || "No phone",
+          experience: candidate.experience ?? "0",
+          score: candidate.Rank ?? candidate.score ?? "0",
+          industry,
+          owner,
+          client,
+          Skills: skillsString,
+          description: candidate.justification || "No context provided",
+        }),
       });
 
-      const data = await res.json();
+      // handle possible non-JSON body safely
+      let data;
+      try {
+        data = await res.json();
+      } catch (err) {
+        data = { _raw: await res.text().catch(() => "") };
+      }
 
       if (res.ok) {
         setResumes((prev) =>
-          prev.map((res) =>
-            res.candidateId === candidate.candidateId
-              ? { ...res, shortlisted: true }
-              : res
-          )
+          prev.map((r) => (r.candidateId === candidate.candidateId ? { ...r, shortlisted: true } : r))
         );
-
-        console.log("Email sent successfully:", data?.message || "OK");
+        console.log("Email sent successfully:", data?.message || data);
         alert(`✅ Candidate ${candidate.name} sent to QNTRL.`);
       } else {
-        console.error("Error sending email:", data?.error || "Unknown error");
-        alert(`❌ Failed: ${data?.error || "Unknown error"}`);
+        console.error("Error sending email:", data?.error || data?.details || res.statusText);
+        alert(`❌ Failed: ${data?.error || data?.details || res.statusText}`);
       }
     } catch (error) {
       console.error("Fetch error:", error);
@@ -115,37 +130,35 @@ body: JSON.stringify({
     }
   };
 
-
   const filteredResumes = useMemo(() => {
-  const query = searchQuery.toLowerCase().trim();
+    const query = searchQuery.toLowerCase().trim();
 
-  return resumes.filter((resume) => {
-    const rank = Number(resume.Rank) || 0;
+    return resumes.filter((resume) => {
+      const rank = Number(resume.Rank) || 0;
 
-    const matchesSearch =
-      resume.name.toLowerCase().includes(query) ||
-      (resume.email && resume.email.toLowerCase().includes(query)) ||
-      (resume.justification && resume.justification.toLowerCase().includes(query));
+      const matchesSearch =
+        (resume.name || "").toLowerCase().includes(query) ||
+        (resume.email && resume.email.toLowerCase().includes(query)) ||
+        (resume.justification && resume.justification.toLowerCase().includes(query));
 
-    const inScoreRange = rank >= scoreRange[0] && rank <= scoreRange[1];
-    const inExperienceRange =
-      resume.experience >= experienceRange[0] && resume.experience <= experienceRange[1];
+      const inScoreRange = rank >= scoreRange[0] && rank <= scoreRange[1];
+      const inExperienceRange =
+        resume.experience >= experienceRange[0] && resume.experience <= experienceRange[1];
 
-    const hasEmail = filterEmail ? (resume.email && resume.email !== 'No email') : true;
-    const hasPhone = filterPhone ? (resume.phone && resume.phone !== 'No phone') : true;
+      const hasEmail = filterEmail ? (resume.email && resume.email !== "No email") : true;
+      const hasPhone = filterPhone ? (resume.phone && resume.phone !== "No phone") : true;
 
-    return matchesSearch && inScoreRange && inExperienceRange && hasEmail && hasPhone;
-  });
-}, [searchQuery, scoreRange, experienceRange, filterEmail, filterPhone, resumes]);
+      return matchesSearch && inScoreRange && inExperienceRange && hasEmail && hasPhone;
+    });
+  }, [searchQuery, scoreRange, experienceRange, filterEmail, filterPhone, resumes]);
 
   const renderThumb = ({ index, props }) => (
     <div {...props} key={index} className="h-5 w-5 rounded-full bg-orange-400 shadow-md cursor-pointer" />
   );
 
   return (
-  
     <div className="min-h-screen w-full bg-white p-4">
-  <div className="shadow-lg rounded-xl w-full p-4 flex flex-col md:flex-row gap-6">
+      <div className="shadow-lg rounded-xl w-full p-4 flex flex-col md:flex-row gap-6">
         {/* Sidebar */}
         <div className="w-full md:w-64 bg-gray-700 rounded-xl p-4 sm:p-6 shadow-md flex flex-col flex-shrink-0">
           <h3 className="font-bold mb-5 text-xl text-white">🔍 Filter Options</h3>
@@ -158,29 +171,30 @@ body: JSON.stringify({
             className="mb-6 px-4 py-3 rounded-lg border border-blue-300 focus:outline-none text-gray-600"
           />
 
-{/* Key Skills */}
-<div>
-  <h3 className="font-bold mt-8 mb-3 text-xl text-white">🛠️ Key Skills</h3>
-  <div className="flex flex-wrap gap-2 bg-white border border-gray-300 rounded-md p-3 shadow-inner min-h-[40px]">
-    {userKeySkills.length > 0 ? (
-      userKeySkills.map((skill, index) => (
-        <span
-          key={index}
-          className="bg-orange-400 text-white px-3 py-1 rounded-full text-sm font-medium shadow-sm"
-        >
-          {skill}
-        </span>
-      ))
-    ) : (
-      <span className="text-gray-500">No key skills available</span>
-    )}
-  </div>
-</div>
+          {/* Key Skills */}
+          <div>
+            <h3 className="font-bold mt-8 mb-3 text-xl text-white">🛠️ Key Skills</h3>
+            <div className="flex flex-wrap gap-2 bg-white border border-gray-300 rounded-md p-3 shadow-inner min-h-[40px]">
+              {userKeySkills.length > 0 ? (
+                userKeySkills.map((skill, index) => (
+                  <span
+                    key={index}
+                    className="bg-orange-400 text-white px-3 py-1 rounded-full text-sm font-medium shadow-sm"
+                  >
+                    {skill}
+                  </span>
+                ))
+              ) : (
+                <span className="text-gray-500">No key skills available</span>
+              )}
+            </div>
+          </div>
 
           {/* Score Range */}
           <label className="font-semibold mb-3 block text-lg text-white">Score Range</label>
           <div className="flex justify-between mb-3 font-semibold text-sm text-white">
-            <span>{scoreRange[0]}</span><span>{scoreRange[1]}</span>
+            <span>{scoreRange[0]}</span>
+            <span>{scoreRange[1]}</span>
           </div>
           <Range
             step={1}
@@ -189,11 +203,11 @@ body: JSON.stringify({
             values={scoreRange}
             onChange={setScoreRange}
             renderTrack={({ props, children }) => (
-              <div {...props} style={{ ...props.style, height: '6px', backgroundColor: '#555' }}>
+              <div {...props} style={{ ...props.style, height: "6px", backgroundColor: "#555" }}>
                 <div
                   style={{
-                    height: '6px',
-                    backgroundColor: '#fb923c',
+                    height: "6px",
+                    backgroundColor: "#fb923c",
                     marginLeft: `${((scoreRange[0] - 1) / 9) * 100}%`,
                     width: `${((scoreRange[1] - scoreRange[0]) / 9) * 100}%`,
                   }}
@@ -212,16 +226,16 @@ body: JSON.stringify({
           <Range
             step={1}
             min={0}
-            max={35} // max experience set to 50 years
+            max={35}
             values={experienceRange}
             onChange={setExperienceRange}
             renderTrack={({ props, children }) => (
-              <div {...props} style={{ ...props.style, height: '6px', background: '#555' }}>
+              <div {...props} style={{ ...props.style, height: "6px", background: "#555" }}>
                 <div
                   style={{
-                    height: '6px',
+                    height: "6px",
                     width: `${((experienceRange[1] - experienceRange[0]) / 35) * 100}%`,
-                    backgroundColor: '#fb923c',
+                    backgroundColor: "#fb923c",
                     marginLeft: `${(experienceRange[0] / 35) * 100}%`,
                   }}
                 />
@@ -258,44 +272,33 @@ body: JSON.stringify({
         <motion.div layout className="flex-1 space-y-6 overflow-auto max-h-[80vh]">
           <div className="flex items-center justify-between mb-1">
             <h2 className="text-3xl font-semibold text-[#333333]">📄 Talent Sift</h2>
-              {/* Left Side - Title */}
-  <div className="flex item-start gap-3">
-    <button
-      type="button"
-      onClick={() => navigate("/")}
-      className="px-4 py-2 bg-orange-400 hover:bg-[#E14A42] text-white font-bold rounded"
-    >
-      Home
-    </button>
-  </div>
 
- {/* ✅ Floating Case ID + Candidate Button */}
-<div className="flex items-center justify-between mb-4">
-  {/* Right Side - Case ID + Candidate Button */}
-  <div className="flex flex-col items-end space-y-2">
-    {caseId && (
-      <div className="bg-orange-400 text-white px-4 py-2 rounded-lg shadow-md text-sm">
-        Case ID: {caseId}
-      </div>
-    )}
-    <button
-      onClick={() =>
-        (window.location.href =
-          "https://core.qntrl.com/blueprint/startitnow/job/processtab/30725000001415521/30725000000000419")
-      }
-      className="bg-orange-400 hover:bg-orange-600 text-white font-bold px-6 py-2 rounded-lg shadow-md transition"
-    >
-      Candidate Management
-    </button>
-  </div>
-</div>
+            <div className="flex item-start gap-3">
+              <button
+                type="button"
+                onClick={() => navigate("/")}
+                className="px-4 py-2 bg-orange-400 hover:bg-[#E14A42] text-white font-bold rounded"
+              >
+                Home
+              </button>
+            </div>
 
-      </div>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex flex-col items-end space-y-2">
+                {caseId && <div className="bg-orange-400 text-white px-4 py-2 rounded-lg shadow-md text-sm">Case ID: {caseId}</div>}
+                <button
+                  onClick={() => (window.location.href = "https://core.qntrl.com/blueprint/startitnow/job/processtab/30725000001415521/30725000000000419")}
+                  className="bg-orange-400 hover:bg-orange-600 text-white font-bold px-6 py-2 rounded-lg shadow-md transition"
+                >
+                  Candidate Management
+                </button>
+              </div>
+            </div>
+          </div>
 
           <div className="flex justify-between items-center mb-4">
             <p className="text-orange-600 font-medium mb-4">
-              Showing <span className="font-bold">{filteredResumes.length}</span> of{' '}
-              <span className="font-bold">{resumes.length}</span> resumes
+              Showing <span className="font-bold">{filteredResumes.length}</span> of <span className="font-bold">{resumes.length}</span> resumes
             </p>
 
             <p className=" text-[#333333]font-medium">
@@ -308,51 +311,40 @@ body: JSON.stringify({
               <li className=" text-[#333333] italic font-medium">No resumes found.</li>
             ) : (
               filteredResumes.map((resume) => (
-                <motion.li
-                  layout
-                  key={resume.id}
-                  className="bg-white rounded-2xl shadow-md p-5 flex flex-col gap-3 border border-blue-200"
-                >
+                <motion.li key={resume.candidateId} layout className="bg-white rounded-2xl shadow-md p-5 flex flex-col gap-3 border border-blue-200">
                   <div className=" text-[#333333] grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 w-full">
-                    
-                    <div className="text-2xl font-bold  text-[#333333]">{resume.name}</div> 
-                    <div className=" text-[#333333] font-semibold">Score: {resume.Rank} {getRankLabel(resume.Rank)}</div>
+                    <div className="text-2xl font-bold  text-[#333333]">{resume.name}</div>
+                    <div className=" text-[#333333] font-semibold">Score: {resume.Rank}{getRankLabel(resume.Rank)}</div>
                     <div className=" text-[#333333] font-semibold">Experience: {resume.experience ? `${resume.experience} yrs` : 'null'}</div>
 
-{resume.shortlisted ? (
-  <div className="text-green-700 font-bold">✅ Shortlisted</div>
-) : (
-  <button
-    onClick={() => handleShortlist(resume)}
-    disabled={loadingId === resume.candidateId}
-    className={`px-4 py-2 rounded transition ${
-      loadingId === resume.candidateId
-        ? "bg-gray-400 cursor-not-allowed"
-        : "bg-orange-600 hover:bg-orange-600 text-white"
-    }`}
-  >
-    {loadingId === resume.candidateId ? "Sending..." : "Shortlist"}
-  </button>
-)}
+                    {resume.shortlisted ? (
+                      <div className="text-green-700 font-bold">✅ Shortlisted</div>
+                    ) : (
+                      <button
+                        onClick={() => handleShortlist(resume)}
+                        disabled={loadingId === resume.candidateId}
+                        className={`px-4 py-2 rounded transition ${loadingId === resume.candidateId ? "bg-gray-400 cursor-not-allowed" : "bg-orange-600 hover:bg-orange-600 text-white"}`}
+                      >
+                        {loadingId === resume.candidateId ? "Sending..." : "Shortlist"}
+                      </button>
+                    )}
 
-
-                    <div className=" text-[#333333] font-semibold">{resume.phone || 'No phone'}</div>
-                    <div className=" text-[#333333] font-semibold">{resume.email || 'No email'}</div>
+                    <div className=" text-[#333333] font-semibold">{resume.phone || "No phone"}</div>
+                    <div className=" text-[#333333] font-semibold">{resume.email || "No email"}</div>
                   </div>
 
-                  <div className="text-gray-800 mt-2 text-sm whitespace-pre-line">
-                    {resume.justification}
-                  </div>
+                  <div className="text-gray-800 mt-2 text-sm whitespace-pre-line">{resume.justification}</div>
                 </motion.li>
               ))
             )}
           </ul>
         </motion.div>
       </div>
-      {/* Footer */}  
+
+      {/* Footer */}
       <div className="mt-8 ml-1 w-full">
-            <Footer />
-          </div>
+        <Footer />
+      </div>
     </div>
   );
 };

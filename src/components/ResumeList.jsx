@@ -99,7 +99,7 @@ const ResumeList = ({ client: propClient, industry: propIndustry, requiredskills
           industry,
           owner,
           client,
-          Skills: skillsString,
+          Skills: candidate.requiredskills || skillsString,
           description: candidate.justification || "No context provided",
         }),
       });

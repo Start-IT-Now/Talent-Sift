@@ -84,12 +84,13 @@ const handleShortlist = async (candidate) => {
   setLoadingId(candidate.candidateId);
 
   try {
-    const source = getSource(); // servicenow | qntrl
+    const source = getSource();
+    if (!source) throw new Error("Missing source");
 
     const payload = {
-      source,
-      case_id: localStorage.getItem("caseId"),
+      source, // ✅ REQUIRED
 
+      case_id: localStorage.getItem("caseId"),
       name: candidate.name,
       email: candidate.email,
       phone: candidate.phone,
@@ -100,10 +101,9 @@ const handleShortlist = async (candidate) => {
       client: localStorage.getItem("client"),
       industry: localStorage.getItem("industry"),
       owner: localStorage.getItem("owner"),
-      skills:
-        Array.isArray(userKeySkills)
-          ? userKeySkills.join(", ")
-          : userKeySkills || "No Skills",
+      skills: Array.isArray(userKeySkills)
+        ? userKeySkills.join(", ")
+        : userKeySkills || "No Skills",
     };
 
     const res = await fetch("/api/shortlist", {
@@ -113,7 +113,6 @@ const handleShortlist = async (candidate) => {
     });
 
     const data = await res.json();
-
     if (!res.ok) throw new Error(data.error);
 
     setResumes((prev) =>
@@ -127,7 +126,7 @@ const handleShortlist = async (candidate) => {
     alert(`✅ Shortlisted in ${source.toUpperCase()}`);
   } catch (err) {
     console.error(err);
-    alert("❌ Shortlisting failed");
+    alert(err.message || "❌ Shortlisting failed");
   } finally {
     setLoadingId(null);
   }

@@ -262,10 +262,11 @@ if (source === "servicenow") {
         }
       }
 
-      toast({
-        title: "Success!",
-        description: `✅ Resumes processed successfully. Remaining credits: ${updatedCredits}`,
-      });
+  toast({
+  title: "Success!",
+  description: "✅ Resumes processed successfully.",
+});
+
 
       try {
       console.log("➡️ Logging to Google Sheets");

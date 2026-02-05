@@ -29,6 +29,11 @@ function App() {
   const { toast } = useToast();
   const navigate = useNavigate();
   
+  // ✅ helper: get source from URL
+  const getSource = () => {
+    const params = new URLSearchParams(window.location.search);
+    return (params.get("source") || "").toLowerCase();
+  };
 
   // Auto-populate jobDescription and requiredSkills from URL params on mount
   useEffect(() => {
@@ -202,23 +207,24 @@ const jobPayload = {
       localStorage.setItem("resumeResults", JSON.stringify(result.data));
 
       // ✅ 4. If source=servicenow → store in ServiceNow directly
-      const source = getsource();
+     const source = getSource();
 
-      if (source === "servicenow") {
-        try {
-          const snPayload = {
-            case_id: result.data?.id || "",
-            job_title: data.jobTitle,
-            job_type: data.jobType,
-            years_of_experience: data.yearsOfExperience,
-            industry: data.industry,
-            email: data.email,
-            skills: data.requiredSkills,
-            job_description: stripHtml(data.jobDescription),
+if (source === "servicenow") {
+  try {
+    const snPayload = {
+      case_id: result.data?.id || "",
+      job_title: data.jobTitle,
+      job_type: data.jobtype, // ✅ fixed (you were mixing jobType/jobtype)
+      years_of_experience: data.yearsOfExperience,
+      industry: data.industry,
+      email: data.email,
+      skills: data.requiredSkills,
+      job_description: stripHtml(data.jobDescription),
 
-            // ✅ Full AI JSON
-            ai_results: result.data,
-          };
+      // ✅ Full AI response
+      ai_results: result.data,
+    };
+
 
           // ✅ Your Scripted REST API endpoint in ServiceNow
           const snRes = await axios.post(

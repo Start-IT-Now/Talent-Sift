@@ -127,7 +127,7 @@ console.log("success" + JSON.stringify(data));
       return;
     }
 
-
+console.log("➡️ Calling /api/validateuser");
 const validateRes = await fetch("/api/validateuser", {
   method: "POST",
   headers: { "Content-Type": "application/json" },
@@ -144,10 +144,12 @@ if (validateRes.status !== 200 || validateData.status !== "success") {
   });
   return;
 }
+console.log("✅ /api/validateuser status:", validateRes.status);
 
 
 
     try {
+      console.log("➡️ Calling workflow-exe API");
       const form = new FormData();
 
       const stripHtml = (html) => {
@@ -200,7 +202,47 @@ const jobPayload = {
       localStorage.setItem("resumeResults", JSON.stringify(result.data));
     //  localStorage.setItem("resumeResults", JSON.stringify(result.data?.result || []));
 
+   // ✅ Send AI results to ServiceNow
+const snPayload = {
+  data: {
+    ritm: localStorage.getItem("ritm_sys_id"), // MUST be sys_id
+    results: (result.data.result || []).map(r => ({
+      name: r.name || "",
+      email: r.email || "",
+      phone: r.phone || "",
+      score: r.score || 0,
+      justification: r.justification || ""
+    }))
+  }
+};
+
+const snResponse = await fetch(
+  "https://dev303448.service-now.com/api/1852827/screening_results/POST",
+  {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Accept": "application/json",
+      "Authorization": "Basic " + btoa("admin:n/$zULuUC37l") // TEMP ONLY
+    },
+    body: JSON.stringify(snPayload)
+  }
+);
+
+if (!snResponse.ok) {
+  const err = await snResponse.json();
+  throw new Error(err.error || "ServiceNow insert failed");
+}
+
+toast({
+  title: "ServiceNow Updated",
+  description: "✅ Resume rankings stored in ServiceNow",
+});
+
+
+
       try {
+      console.log("➡️ Logging to Google Sheets");
       await fetch("/api/logToGoogleSheet", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

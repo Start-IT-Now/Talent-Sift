@@ -199,10 +199,10 @@ const jobPayload = {
         localStorage.setItem("caseId", result.data.id); // ✅ Persist across sessions
       }
 
-            localStorage.setItem("resumeResults", JSON.stringify(result.data));
-              
+      localStorage.setItem("resumeResults", JSON.stringify(result.data));
+
       // ✅ 4. If source=servicenow → store in ServiceNow directly
-      const source = getSource();
+      const source = getsource();
 
       if (source === "servicenow") {
         try {

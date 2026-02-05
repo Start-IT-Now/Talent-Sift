@@ -74,61 +74,64 @@ const ResumeList = ({ client: propClient, industry: propIndustry, requiredskills
     }
   }, [resumes, orgId]);
 
-  const handleShortlist = async (candidate) => {
-    setLoadingId(candidate.candidateId);
-    try {
-      // declare local vars
-      const client = localStorage.getItem("client") || propClient || "N/A";
-      const industry = localStorage.getItem("industry") || propIndustry || "Not Mentioned";
-      const owner = localStorage.getItem("owner") || propOwner || "Not Mentioned";
+  const getSource = () => {
+  const params = new URLSearchParams(window.location.search);
+  return (params.get("source") || "").toLowerCase();
+};
 
-      const skillsString =
-        (Array.isArray(userKeySkills) ? userKeySkills.join(", ") : (typeof userKeySkills === "string" ? userKeySkills : "")) ||
-        requiredskills ||
-        "No Skills";
 
-      const res = await fetch("/api/send-email", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: candidate.name || "No name",
-          email: candidate.email || "No email",
-          phone: candidate.phone || "No phone",
-          experience: candidate.experience ?? "0",
-          score: candidate.Rank ?? candidate.score ?? "0",
-          industry,
-          owner,
-          client,
-          Skills: candidate.requiredskills || skillsString,
-          description: candidate.justification || "No context provided",
-        }),
-      });
+const handleShortlist = async (candidate) => {
+  setLoadingId(candidate.candidateId);
 
-      // handle possible non-JSON body safely
-      let data;
-      try {
-        data = await res.json();
-      } catch (err) {
-        data = { _raw: await res.text().catch(() => "") };
-      }
+  try {
+    const source = getSource(); // servicenow | qntrl
 
-      if (res.ok) {
-        setResumes((prev) =>
-          prev.map((r) => (r.candidateId === candidate.candidateId ? { ...r, shortlisted: true } : r))
-        );
-        console.log("Email sent successfully:", data?.message || data);
-        alert(`✅ Candidate ${candidate.name} sent to QNTRL.`);
-      } else {
-        console.error("Error sending email:", data?.error || data?.details || res.statusText);
-        alert(`❌ Failed: ${data?.error || data?.details || res.statusText}`);
-      }
-    } catch (error) {
-      console.error("Fetch error:", error);
-      alert("⚠️ Error sending email. Please try again.");
-    } finally {
-      setLoadingId(null);
-    }
-  };
+    const payload = {
+      source,
+      case_id: localStorage.getItem("caseId"),
+
+      name: candidate.name,
+      email: candidate.email,
+      phone: candidate.phone,
+      experience: candidate.experience ?? 0,
+      score: candidate.Rank ?? candidate.score ?? 0,
+      justification: candidate.justification || "",
+
+      client: localStorage.getItem("client"),
+      industry: localStorage.getItem("industry"),
+      owner: localStorage.getItem("owner"),
+      skills:
+        Array.isArray(userKeySkills)
+          ? userKeySkills.join(", ")
+          : userKeySkills || "No Skills",
+    };
+
+    const res = await fetch("/api/shortlist", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) throw new Error(data.error);
+
+    setResumes((prev) =>
+      prev.map((r) =>
+        r.candidateId === candidate.candidateId
+          ? { ...r, shortlisted: true }
+          : r
+      )
+    );
+
+    alert(`✅ Shortlisted in ${source.toUpperCase()}`);
+  } catch (err) {
+    console.error(err);
+    alert("❌ Shortlisting failed");
+  } finally {
+    setLoadingId(null);
+  }
+};
 
   const filteredResumes = useMemo(() => {
     const query = searchQuery.toLowerCase().trim();

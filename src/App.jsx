@@ -199,47 +199,65 @@ const jobPayload = {
         localStorage.setItem("caseId", result.data.id); // ✅ Persist across sessions
       }
 
-      localStorage.setItem("resumeResults", JSON.stringify(result.data));
-    //  localStorage.setItem("resumeResults", JSON.stringify(result.data?.result || []));
+      // ✅ 4. If source=servicenow → store in ServiceNow directly
+      const source = getSource();
 
-   // ✅ Send AI results to ServiceNow
-const snPayload = {
-  data: {
-    ritm: localStorage.getItem("ritm_sys_id"), // MUST be sys_id
-    results: (result.data.result || []).map(r => ({
-      name: r.name || "",
-      email: r.email || "",
-      phone: r.phone || "",
-      score: r.score || 0,
-      justification: r.justification || ""
-    }))
-  }
-};
+      if (source === "servicenow") {
+        try {
+          const snPayload = {
+            case_id: result.data?.id || "",
+            job_title: data.jobTitle,
+            job_type: data.jobType,
+            years_of_experience: data.yearsOfExperience,
+            industry: data.industry,
+            email: data.email,
+            skills: data.requiredSkills,
+            job_description: stripHtml(data.jobDescription),
 
-const snResponse = await fetch(
-  "https://dev303448.service-now.com/api/1852827/screening_results/POST",
-  {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Accept": "application/json",
-      "Authorization": "Basic " + btoa("admin:n/$zULuUC37l") // TEMP ONLY
-    },
-    body: JSON.stringify(snPayload)
-  }
-);
+            // ✅ Full AI JSON
+            ai_results: result.data,
+          };
 
-if (!snResponse.ok) {
-  const err = await snResponse.json();
-  throw new Error(err.error || "ServiceNow insert failed");
-}
+          // ✅ Your Scripted REST API endpoint in ServiceNow
+          const snRes = await axios.post(
+            "https://dev303448.service-now.com/api/1852827/screening_results/POST",
+            snPayload,
+            {
+              auth: {
+                username: "admin",
+                password: "n/$zULuUC37l",
+              },
+              headers: {
+                "Content-Type": "application/json",
+                Accept: "application/json",
+              },
+            }
+          );
 
-toast({
-  title: "ServiceNow Updated",
-  description: "✅ Resume rankings stored in ServiceNow",
-});
+          console.log("✅ Stored in ServiceNow:", snRes.data);
 
+          toast({
+            title: "ServiceNow Updated",
+            description: "✅ Results stored in ServiceNow successfully.",
+          });
+        } catch (snErr) {
+          console.error("❌ ServiceNow storing failed:", snErr);
 
+          toast({
+            title: "ServiceNow Error",
+            description:
+              snErr.response?.data?.error?.message ||
+              snErr.message ||
+              "❌ Failed storing results in ServiceNow",
+            variant: "destructive",
+          });
+        }
+      }
+
+      toast({
+        title: "Success!",
+        description: `✅ Resumes processed successfully. Remaining credits: ${updatedCredits}`,
+      });
 
       try {
       console.log("➡️ Logging to Google Sheets");

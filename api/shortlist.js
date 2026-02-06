@@ -10,39 +10,38 @@ export default async function handler(req, res) {
 
     /* ================= SERVICENOW ================= */
     if (c.source === "servicenow") {
-      await axios.post(
-        "https://dev303448.service-now.com/api/1852827/screening_results/POST",
+  await axios.post(
+  "https://dev303448.service-now.com/api/1852827/screening_results/POST",
+  {
+    data: {
+      case_id: c.case_id,
+      results: [
         {
-          data: {
-            case_id: c.case_id,
-            results: [
-              {
-                name: c.name,
-                email: c.email,
-                phone: c.phone,
-                experience: c.experience,
-                score: c.score,
-                justification: c.justification,
-                client: c.client,
-                industry: c.industry,
-                owner: c.owner,
-                skills: c.skills,
-              },
-            ],
-          },
-        },
-        {
-          auth: {
-            username: process.env.SN_USER,
-            password: process.env.SN_PASS,
-          },
-          headers: {
-            "Content-Type": "application/json",
-            Accept: "application/json",
-          },
+          name: c.name,
+          email: c.email,
+          phone: c.phone,
+          experience: c.experience,
+          score: c.score,
+          justification: c.justification,
+          client: c.client,
+          industry: c.industry,
+          owner: c.owner,
+          skills: c.skills,
         }
-      );
-
+      ]
+    }
+  },
+  {
+    auth: {
+      username: process.env.SN_USER,
+      password: process.env.SN_PASS,
+    },
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+  }
+);
       return res.json({
         status: "success",
         target: "servicenow",

@@ -30,11 +30,18 @@ function App() {
   const { toast } = useToast();
   const navigate = useNavigate();
   
-  // ✅ helper: get source from URL
-  const getSource = () => {
-    const params = new URLSearchParams(window.location.search);
-    return (params.get("source") || "").toLowerCase();
-  };
+  useEffect(() => {
+  const params = new URLSearchParams(window.location.search);
+  const src = params.get("source");
+
+  if (src) {
+    localStorage.setItem("source", src.toLowerCase());
+  }
+}, []);
+
+const getSource = () => {
+  return (localStorage.getItem("source") || "").toLowerCase();
+};
 
   // Auto-populate jobDescription and requiredSkills from URL params on mount
   useEffect(() => {

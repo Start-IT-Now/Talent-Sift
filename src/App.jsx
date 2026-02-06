@@ -214,66 +214,66 @@ const jobPayload = {
 
       localStorage.setItem("resumeResults", JSON.stringify(result.data));
 
-      // ✅ 4. If source=servicenow → store in ServiceNow directly
-     const source = getSource();
+//       // ✅ 4. If source=servicenow → store in ServiceNow directly
+//      const source = getSource();
 
-if (source === "servicenow") {
-  try {
-    const snPayload = {
-      case_id: result.data?.id || "",
-      job_title: data.jobTitle,
-      job_type: data.jobtype, // ✅ fixed (you were mixing jobType/jobtype)
-      years_of_experience: data.yearsOfExperience,
-      industry: data.industry,
-      email: data.email,
-      skills: data.requiredSkills,
-      job_description: stripHtml(data.jobDescription),
+// if (source === "servicenow") {
+//   try {
+//     const snPayload = {
+//       case_id: result.data?.id || "",
+//       job_title: data.jobTitle,
+//       job_type: data.jobtype, // ✅ fixed (you were mixing jobType/jobtype)
+//       years_of_experience: data.yearsOfExperience,
+//       industry: data.industry,
+//       email: data.email,
+//       skills: data.requiredSkills,
+//       job_description: stripHtml(data.jobDescription),
 
-      // ✅ Full AI response
-      ai_results: result.data,
-    };
+//       // ✅ Full AI response
+//       ai_results: result.data,
+//     };
 
 
-          // ✅ Your Scripted REST API endpoint in ServiceNow
-          const snRes = await axios.post(
-            "https://dev303448.service-now.com/api/1852827/screening_results/POST",
-            snPayload,
-            {
-              auth: {
-                username: "admin",
-                password: "n/$zULuUC37l",
-              },
-              headers: {
-                "Content-Type": "application/json",
-                Accept: "application/json",
-              },
-            }
-          );
+//           // ✅ Your Scripted REST API endpoint in ServiceNow
+//           const snRes = await axios.post(
+//             "https://dev303448.service-now.com/api/1852827/screening_results/POST",
+//             snPayload,
+//             {
+//               auth: {
+//                 username: "admin",
+//                 password: "n/$zULuUC37l",
+//               },
+//               headers: {
+//                 "Content-Type": "application/json",
+//                 Accept: "application/json",
+//               },
+//             }
+//           );
 
-          console.log("✅ Stored in ServiceNow:", snRes.data);
+//           console.log("✅ Stored in ServiceNow:", snRes.data);
 
-          toast({
-            title: "ServiceNow Updated",
-            description: "✅ Results stored in ServiceNow successfully.",
-          });
-        } catch (snErr) {
-          console.error("❌ ServiceNow storing failed:", snErr);
+//           toast({
+//             title: "ServiceNow Updated",
+//             description: "✅ Results stored in ServiceNow successfully.",
+//           });
+//         } catch (snErr) {
+//           console.error("❌ ServiceNow storing failed:", snErr);
 
-          toast({
-            title: "ServiceNow Error",
-            description:
-              snErr.response?.data?.error?.message ||
-              snErr.message ||
-              "❌ Failed storing results in ServiceNow",
-            variant: "destructive",
-          });
-        }
-      }
+//           toast({
+//             title: "ServiceNow Error",
+//             description:
+//               snErr.response?.data?.error?.message ||
+//               snErr.message ||
+//               "❌ Failed storing results in ServiceNow",
+//             variant: "destructive",
+//           });
+//         }
+//       }
 
-  toast({
-  title: "Success!",
-  description: "✅ Resumes processed successfully.",
-});
+//   toast({
+//   title: "Success!",
+//   description: "✅ Resumes processed successfully.",
+// });
 
 
       try {

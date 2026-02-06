@@ -78,29 +78,26 @@ const ResumeList = ({ client: propClient, industry: propIndustry, requiredskills
   }, [resumes, orgId]);
 
 
-const getSource = () => {
-  const params = new URLSearchParams(location.search);
-  return params.get("source")?.toLowerCase() || "";
-};
 
 const handleShortlist = async (candidate) => {
   setLoadingId(candidate.candidateId);
 
   try {
-    const source = getSource();
+    const source = localStorage.getItem("source");
+
+    console.log("Using source:", source); // debug
+
     if (!source) throw new Error("Missing source");
 
     const payload = {
-      source, // ✅ REQUIRED
-
+      source,
       case_id: localStorage.getItem("caseId"),
       name: candidate.name,
       email: candidate.email,
       phone: candidate.phone,
       experience: candidate.experience ?? 0,
-      score: candidate.Rank ?? candidate.score ?? 0,
+      score: candidate.Rank ?? 0,
       justification: candidate.justification || "",
-
       client: localStorage.getItem("client"),
       industry: localStorage.getItem("industry"),
       owner: localStorage.getItem("owner"),

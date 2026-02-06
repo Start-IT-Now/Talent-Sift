@@ -342,9 +342,7 @@ const Existing = ({ client, industry, owner, requestor, requiredSkills, onGoHome
                 type="button"
                 onClick={() => {
                   onGoHome?.();
-                  navigate(
-                    `/`
-                  );
+                  navigate(`/`);
                 }}
                 className="px-4 py-2 bg-orange-400 hover:bg-[#E14A42] text-white font-bold rounded"
               >

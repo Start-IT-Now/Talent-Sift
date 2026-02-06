@@ -3,6 +3,8 @@ import { motion } from "framer-motion";
 import { Range } from "react-range";
 import { useNavigate } from "react-router-dom";
 import Footer from "@/components/Footer";
+import { useLocation } from "react-router-dom";
+
 
 const getRankLabel = (score) => {
   // optional: return a friendly label based on score
@@ -14,6 +16,7 @@ const getRankLabel = (score) => {
 
 const ResumeList = ({ client: propClient, industry: propIndustry, requiredskills, owner: propOwner }) => {
   const navigate = useNavigate();
+   const location = useLocation();
 
   const [resumes, setResumes] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -74,11 +77,11 @@ const ResumeList = ({ client: propClient, industry: propIndustry, requiredskills
     }
   }, [resumes, orgId]);
 
-  const getSource = () => {
-  const params = new URLSearchParams(window.location.search);
-  return (params.get("source") || "").toLowerCase();
-};
 
+const getSource = () => {
+  const params = new URLSearchParams(location.search);
+  return params.get("source")?.toLowerCase() || "";
+};
 
 const handleShortlist = async (candidate) => {
   setLoadingId(candidate.candidateId);

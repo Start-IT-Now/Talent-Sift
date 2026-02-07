@@ -7,6 +7,19 @@ const Existing = ({ client, industry, owner, requestor, requiredSkills, onGoHome
   const navigate = useNavigate();
   const location = useLocation();
 
+  useEffect(() => {
+  const params = new URLSearchParams(window.location.search);
+  const src = params.get("source");
+
+  if (src) {
+    localStorage.setItem("source", src.toLowerCase());
+  }
+}, []);
+
+const getSource = () => {
+  return (localStorage.getItem("source") || "").toLowerCase();
+};
+
   // ✅ Always read org_id and requestor from URL
   const query = new URLSearchParams(location.search);
   const orgIdParam = query.get("org_id");
@@ -128,39 +141,60 @@ const Existing = ({ client, industry, owner, requestor, requiredSkills, onGoHome
     return [...new Set(combinedResumes.flatMap((r) => r.keySkills || []))];
   }, [combinedResumes]);
 
-  const handleShortlist = async (candidate) => {
-    try {
-      setLoadingId(candidate.id);
-      const res = await fetch("/api/send-email", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: candidate.name || "No name",
-          email: candidate.email || "No email",
-          phone: candidate.phone || "No phone",
-          experience: candidate.experience || 0,
-          score: candidate.score || candidate.Rank || 0,
-          description: candidate.justification || "No description provided",
-        }),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setSearchedResumes((prev) =>
-          prev.map((res) =>
-            res.id === candidate.id ? { ...res, shortlisted: true } : res
-          )
-        );
-        alert(`✅ Candidate ${candidate.name} sent to QNTRL.`);
-      } else {
-        alert(`❌ Failed: ${data?.error || "Unknown error"}`);
-      }
-    } catch (error) {
-      console.error(error);
-      alert("⚠️ Error sending email. Please try again.");
-    } finally {
-      setLoadingId(null);
+ const handleShortlist = async (candidate) => {
+  try {
+    setLoadingId(candidate.id);
+
+    const source = getSource();
+
+    if (!source) {
+      alert("❌ Missing source (servicenow / qntrl)");
+      return;
     }
-  };
+
+    const payload = {
+      source,
+      case_id: localStorage.getItem("caseId"),
+      name: candidate.name || "",
+      email: candidate.email || "",
+      phone: candidate.phone || "",
+      experience: candidate.experience || 0,
+      score: candidate.Rank || 0,
+      justification: candidate.justification || "",
+      client,
+      industry,
+      owner,
+      skills: requiredSkills || keySkill || "",
+    };
+
+    const res = await fetch("/api/shortlist", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      alert(`❌ ${data?.error || "Shortlist failed"}`);
+      return;
+    }
+
+    setSearchedResumes((prev) =>
+      prev.map((r) =>
+        r.id === candidate.id ? { ...r, shortlisted: true } : r
+      )
+    );
+
+    alert(`✅ Shortlisted in ${source.toUpperCase()}`);
+
+  } catch (error) {
+    console.error(error);
+    alert("⚠️ Shortlisting failed.");
+  } finally {
+    setLoadingId(null);
+  }
+};
 
   console.log("Current route:", location.pathname);
 
